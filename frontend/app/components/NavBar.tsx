@@ -11,15 +11,15 @@ const NavBar = () => {
           <Typography variant="h6" style={{ flexGrow: 1 }}>
             LifeThon
           </Typography>
-          <Button color="inherit">
-            <Link href="/">Home</Link>
-          </Button>
-          <Button color="inherit">
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button color="inherit">
-            <Link href="/register">Register</Link>
-          </Button>
+          <Link href="/">
+            <Button color="inherit">Home</Button>
+          </Link>
+          <Link href="/login">
+            <Button color="inherit">Login</Button>
+          </Link>
+          <Link href="/register">
+            <Button color="inherit">Register</Button>
+          </Link>
         </Toolbar>
       </AppBar>
     </div>
