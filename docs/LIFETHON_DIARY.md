@@ -29,6 +29,50 @@
 
 ---
 
+## Entry — 2025-02-03 | Area: backend
+
+- **Title:** PostgreSQL Connection Refused - Port Misconfiguration
+- **Files / Paths:** `application.properties`, PostgreSQL service configuration
+- **Stage:** Fixed
+- **Tags:** #bug #database #configuration #learning
+
+### Problem / Observation 🚧
+
+- Spring Boot application failed to connect to PostgreSQL database with "connection refused" error
+- Initial assumption was that database was on default port 5432
+- Attempted multiple troubleshooting steps: checking service status, firewall rules, authentication configuration
+- Error persisted despite PostgreSQL service running and accepting connections
+
+### Action / Fix ✅
+
+- Identified root cause: PostgreSQL was running on port 8080 instead of default port 5432
+- Updated `application.properties` connection string:
+
+```properties
+  spring.datasource.url=jdbc:postgresql://localhost:8080/LifeThon
+```
+
+- Verified connection successful after port correction
+- Database connectivity established and application able to communicate with PostgreSQL
+
+### Learnings ✨
+
+- Always verify actual port configuration rather than assuming defaults
+- "Connection refused" can indicate wrong port, not just service issues
+- Check `postgresql.conf` for actual port setting: `port = XXXX`
+- Can verify listening ports with: `netstat -ano | findstr :XXXX`
+- Non-standard ports may be configured during installation or to avoid conflicts
+- Document actual infrastructure configuration to avoid future assumptions
+
+### STAR-ready bullets ⭐
+
+- **S:** Spring Boot application failing to connect to PostgreSQL database with connection refused errors during initial setup
+- **T:** Diagnose and resolve database connectivity issue to enable application development
+- **A:** Systematically troubleshooted PostgreSQL service, firewall, and authentication; identified port mismatch (8080 vs assumed 5432); corrected application.properties configuration
+- **R:** Successfully established database connection, resolved blocker, learned to verify infrastructure configuration rather than relying on default assumptions
+
+---
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
