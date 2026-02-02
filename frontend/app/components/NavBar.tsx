@@ -17,9 +17,6 @@ const NavBar = () => {
           <Link href="/login">
             <Button color="inherit">Login</Button>
           </Link>
-          <Link href="/register">
-            <Button color="inherit">Register</Button>
-          </Link>
         </Toolbar>
       </AppBar>
     </div>
