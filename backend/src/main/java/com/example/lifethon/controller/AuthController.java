@@ -1,38 +1,59 @@
 package com.example.lifethon.controller;
 
+import com.example.lifethon.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*") // Allow frontend to connect
 public class AuthController {
 
     @Autowired
-    private com.example.lifethon.service.AuthService authService;
+    private AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            String token = authService.authenticate(request.getEmail(), request.getPassword());
-            return ResponseEntity.ok(new AuthResponse("Login successful", token));
+            AuthService.AuthResponse response = authService.authenticate(
+                request.getEmail(), 
+                request.getPassword()
+            );
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(new ErrorResponse(e.getMessage()));
         } catch (com.example.lifethon.service.InvalidCredentialsException e) {
-            return ResponseEntity.status(401).body(new ErrorResponse("Invalid email or password"));
+            return ResponseEntity.status(401).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        try {
+            AuthService.AuthResponse response = authService.register(
+                request.getUsername(),
+                request.getEmail(),
+                request.getPassword(),
+                request.getFirstName(),
+                request.getLastName()
+            );
+            return ResponseEntity.status(201).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(new ErrorResponse(e.getMessage()));
         }
     }
 
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin() {
         String token = authService.googleLogin();
-        return ResponseEntity.ok(new AuthResponse("Google login successful", token));
+        return ResponseEntity.ok(new SimpleAuthResponse("Google login successful", token));
     }
 
     @PostMapping("/facebook")
     public ResponseEntity<?> facebookLogin() {
         String token = authService.facebookLogin();
-        return ResponseEntity.ok(new AuthResponse("Facebook login successful", token));
+        return ResponseEntity.ok(new SimpleAuthResponse("Facebook login successful", token));
     }
 
     // DTOs
@@ -48,21 +69,41 @@ public class AuthController {
     public static class LoginRequest {
         private String email;
         private String password;
-        // getters and setters
+        
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
     }
 
-    public static class AuthResponse {
+    public static class RegisterRequest {
+        private String username;
+        private String email;
+        private String password;
+        private String firstName;
+        private String lastName;
+        
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String firstName) { this.firstName = firstName; }
+        public String getLastName() { return lastName; }
+        public void setLastName(String lastName) { this.lastName = lastName; }
+    }
+
+    public static class SimpleAuthResponse {
         private String message;
         private String token;
-        public AuthResponse(String message, String token) {
+        
+        public SimpleAuthResponse(String message, String token) {
             this.message = message;
             this.token = token;
         }
-        // getters and setters
+        
         public String getMessage() { return message; }
         public void setMessage(String message) { this.message = message; }
         public String getToken() { return token; }
