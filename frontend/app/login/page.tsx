@@ -6,24 +6,42 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = async (e: { preventDefault: () => void }) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     try {
-      const response = await fetch("/api/auth/login", {
+      // Update the URL to point to your Spring Boot backend
+      const response = await fetch("http://localhost:8081/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
+
       if (response.ok) {
         const data = await response.json();
         console.log("Login successful:", data);
-        // Redirect to dashboard or home page
+
+        // Store the token in localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data.userId);
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("email", data.email);
+
+        // Redirect to dashboard
         window.location.href = "/dashboard";
       } else {
-        console.error("Login failed:", response.statusText);
+        // Handle error response
+        const errorData = await response.json();
+        console.error("Login failed:", errorData.error || response.statusText);
+        alert(
+          errorData.error || "Login failed. Please check your credentials.",
+        );
       }
     } catch (error) {
       console.error("Login error:", error);
+      alert("Network error. Please check if the server is running.");
     }
   };
 
