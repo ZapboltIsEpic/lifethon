@@ -26,7 +26,7 @@ public class JwtUtil {
     }
 
     // Generate JWT token for a user
-    public String generateToken(String email, Long userId, String username) {
+    public String generateToken(String email, Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("email", email);

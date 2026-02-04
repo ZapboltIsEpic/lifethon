@@ -2,6 +2,8 @@ package com.example.lifethon.service;
 
 import com.example.lifethon.entity.User;
 import com.example.lifethon.repository.UserRepository;
+import com.example.lifethon.util.JwtUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +14,9 @@ public class AuthService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     public AuthResponse authenticate(String email, String password) {
         if (email == null || email.trim().isEmpty()) {
@@ -41,21 +46,21 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
-        // Generate token and return user info
-        String token = generateToken(user);
+        // Generate JWT token using JwtUtil
+        String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+
         return new AuthResponse(
             "Login successful",
             token,
+            refreshToken,
             user.getId(),
             user.getEmail()
         );
     }
 
-    public AuthResponse register(String username, String email, String password, String firstName, String lastName) {
+    public AuthResponse register(String email, String password, String firstName, String lastName) {
         // Validate input
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException("Username is required");
-        }
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
@@ -80,20 +85,58 @@ public class AuthService {
         // Save to database
         User savedUser = userRepository.save(newUser);
 
-        // Generate token and return response
-        String token = generateToken(savedUser);
+        // Generate JWT token using JwtUtil
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
+
         return new AuthResponse(
             "Registration successful",
             token,
+            refreshToken,
             savedUser.getId(),
             savedUser.getEmail()
         );
     }
 
-    private String generateToken(User user) {
-        // TODO: Implement JWT token generation with proper library
-        // This is a placeholder - DO NOT USE IN PRODUCTION
-        return "Bearer_" + user.getEmail() + "_" + System.currentTimeMillis();
+    public AuthResponse refreshToken(String refreshToken) {
+        try {
+            // Validate the refresh token
+            if (jwtUtil.validateToken(refreshToken)) {
+                String email = jwtUtil.extractEmail(refreshToken);
+                Optional<User> userOptional = userRepository.findByEmail(email);
+                
+                if (userOptional.isPresent()) {
+                    User user = userOptional.get();
+                    
+                    // Generate new tokens
+                    String newToken = jwtUtil.generateToken(user.getEmail(), user.getId());
+                    String newRefreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+                    
+                    return new AuthResponse(
+                        "Token refreshed successfully",
+                        newToken,
+                        newRefreshToken,
+                        user.getId(),
+                        user.getEmail()
+                    );
+                }
+            }
+            throw new InvalidCredentialsException("Invalid refresh token");
+        } catch (Exception e) {
+            throw new InvalidCredentialsException("Invalid refresh token");
+        }
+    }
+
+    public boolean verifyToken(String token) {
+        return jwtUtil.validateToken(token);
+    }
+
+    public void logout(String token) {
+        // TODO: Implement token blacklist if needed
+        // For now, client-side removal of token is sufficient
+        // In a production system, you might want to:
+        // 1. Store invalidated tokens in Redis with expiration
+        // 2. Check blacklist before validating tokens
     }
 
     public String googleLogin() {
@@ -110,12 +153,14 @@ public class AuthService {
     public static class AuthResponse {
         private String message;
         private String token;
+        private String refreshToken;
         private Long userId;
         private String email;
 
-        public AuthResponse(String message, String token, Long userId, String email) {
+        public AuthResponse(String message, String token, String refreshToken, Long userId, String email) {
             this.message = message;
             this.token = token;
+            this.refreshToken = refreshToken;
             this.userId = userId;
             this.email = email;
         }
@@ -123,10 +168,16 @@ public class AuthService {
         // Getters and Setters
         public String getMessage() { return message; }
         public void setMessage(String message) { this.message = message; }
+        
         public String getToken() { return token; }
         public void setToken(String token) { this.token = token; }
+        
+        public String getRefreshToken() { return refreshToken; }
+        public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+        
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
     }
