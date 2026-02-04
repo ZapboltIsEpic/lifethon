@@ -26,7 +26,6 @@ const LoginPage = () => {
         // Store the token in localStorage
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.userId);
-        localStorage.setItem("username", data.username);
         localStorage.setItem("email", data.email);
 
         // Redirect to dashboard
