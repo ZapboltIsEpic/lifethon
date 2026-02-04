@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const LoginPage = () => {
@@ -179,6 +180,18 @@ const LoginPage = () => {
             </svg>
             Facebook
           </button>
+        </div>
+
+        <div className="mt-8 text-center">
+          <p className="text-gray-600 text-sm">
+            Don't have an account?{" "}
+            <Link
+              href="/register"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold transition duration-200"
+            >
+              Create an account
+            </Link>
+          </p>
         </div>
       </div>
     </div>
