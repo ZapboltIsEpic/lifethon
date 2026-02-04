@@ -29,7 +29,6 @@ public class JwtUtil {
     public String generateToken(String email, Long userId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
-        claims.put("username", username);
         claims.put("email", email);
 
         return Jwts.builder()
@@ -59,11 +58,6 @@ public class JwtUtil {
     // Extract userId from token
     public Long extractUserId(String token) {
         return extractClaims(token).get("userId", Long.class);
-    }
-
-    // Extract username from token
-    public String extractUsername(String token) {
-        return extractClaims(token).get("username", String.class);
     }
 
     // Extract expiration date
