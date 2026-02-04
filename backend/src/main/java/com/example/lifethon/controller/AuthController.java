@@ -32,7 +32,6 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
             AuthService.AuthResponse response = authService.register(
-                request.getUsername(),
                 request.getEmail(),
                 request.getPassword(),
                 request.getFirstName(),
