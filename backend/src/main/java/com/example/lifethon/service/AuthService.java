@@ -3,8 +3,8 @@ package com.example.lifethon.service;
 import com.example.lifethon.entity.User;
 import com.example.lifethon.repository.UserRepository;
 import com.example.lifethon.util.JwtUtil;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -17,6 +17,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public AuthResponse authenticate(String email, String password) {
         if (email == null || email.trim().isEmpty()) {
@@ -40,9 +43,8 @@ public class AuthService {
             throw new InvalidCredentialsException("Account is inactive");
         }
         
-        // TODO: Replace with proper password hashing verification (BCrypt)
-        // For now, using plain text comparison (NOT SECURE - fix this!)
-        if (!password.equals(user.getPassword())) {
+        // ✅ FIXED: Use BCrypt to verify password
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
@@ -67,6 +69,11 @@ public class AuthService {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password is required");
         }
+        
+        // Validate password strength (optional but recommended)
+        if (password.length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters long");
+        }
 
         // Check if email already exists
         if (userRepository.existsByEmail(email)) {
@@ -76,8 +83,11 @@ public class AuthService {
         // Create new user
         User newUser = new User();
         newUser.setEmail(email);
-        // TODO: Hash password with BCrypt before saving
-        newUser.setPassword(password); // NOT SECURE - needs hashing!
+        
+        // ✅ FIXED: Hash password with BCrypt before saving
+        String hashedPassword = passwordEncoder.encode(password);
+        newUser.setPassword(hashedPassword);
+        
         newUser.setFirstName(firstName);
         newUser.setLastName(lastName);
         newUser.setIsActive(true);
