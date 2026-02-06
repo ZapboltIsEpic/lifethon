@@ -43,6 +43,59 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyToken(@RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract token from "Bearer <token>"
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(new ErrorResponse("Invalid authorization header"));
+            }
+            
+            String token = authHeader.substring(7); // Remove "Bearer " prefix
+            
+            if (authService.verifyToken(token)) {
+                return ResponseEntity.ok(new MessageResponse("Token is valid"));
+            }
+            
+            return ResponseEntity.status(401).body(new ErrorResponse("Invalid token"));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(new ErrorResponse("Token verification failed"));
+        }
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract refresh token from "Bearer <token>"
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(new ErrorResponse("Invalid authorization header"));
+            }
+            
+            String refreshToken = authHeader.substring(7);
+            AuthService.AuthResponse response = authService.refreshToken(refreshToken);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(new ErrorResponse("Invalid authorization header"));
+            }
+            
+            String token = authHeader.substring(7);
+            authService.logout(token);
+            
+            return ResponseEntity.ok(new MessageResponse("Logged out successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("Logout failed"));
+        }
+    }
+
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin() {
         String token = authService.googleLogin();
@@ -63,6 +116,17 @@ public class AuthController {
         }
         public String getError() { return error; }
         public void setError(String error) { this.error = error; }
+    }
+
+    public static class MessageResponse {
+        private String message;
+        
+        public MessageResponse(String message) {
+            this.message = message;
+        }
+        
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
     }
 
     public static class LoginRequest {
