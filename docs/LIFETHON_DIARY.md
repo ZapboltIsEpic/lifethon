@@ -166,7 +166,7 @@
 ## Entry — 2026-02-05 | Area: frontend/backend/fullstack
 
 - **Title:** JWT Authentication Implementation & User Registration Flow
-- **Files / Paths:** 
+- **Files / Paths:**
   - `backend/src/main/java/com/example/lifethon/util/JwtUtil.java`
   - `backend/src/main/java/com/example/lifethon/service/AuthService.java`
   - `backend/src/main/java/com/example/lifethon/controller/AuthController.java`
@@ -191,6 +191,7 @@
 ### Action / Fix ✅
 
 **Backend JWT Implementation:**
+
 1. Added JJWT dependencies (v0.12.3) to `pom.xml`: jjwt-api, jjwt-impl, jjwt-jackson
 2. Created `JwtUtil.java` utility class with:
    - Token generation with claims (userId, username, email)
@@ -212,6 +213,7 @@
    - Added `/api/auth/logout` endpoint placeholder
 
 **Frontend Implementation:**
+
 1. Created complete registration page (`app/register/page.tsx`):
    - Username, email, password, confirm password, firstName, lastName fields
    - Password match validation
@@ -228,6 +230,7 @@
    - Properly initialized state from localStorage on mount
 
 **API Documentation Strategy:**
+
 1. Documented approach to manage API endpoints:
    - Option 1: Create markdown API documentation file
    - Option 2: Create frontend API constants file with TypeScript
@@ -236,6 +239,7 @@
 2. Recommended Swagger/OpenAPI + API constants + typed service combination
 
 **Configuration:**
+
 - JWT secret key configuration (needs production-grade secret)
 - Token expiration settings
 - CORS configuration for frontend-backend communication
@@ -243,6 +247,7 @@
 ### Learnings ✨
 
 **JWT Implementation Deep Dive:**
+
 - JJWT library uses builder pattern for token creation
 - `SignWith()` requires SecretKey object (Keys.hmacShaKeyFor())
 - Claims are stored in token payload and are readable without secret (but not modifiable)
@@ -250,30 +255,35 @@
 - Multiple exception types (SignatureException, ExpiredJwtException, etc.) for different failure modes
 
 **Token Strategy Best Practices:**
+
 - Access tokens: Short-lived (15min-24hr) for API requests
 - Refresh tokens: Long-lived (7-30 days) for getting new access tokens
 - Store both in localStorage (or httpOnly cookies for better security)
 - Token blacklisting needed for proper logout (Redis recommended)
 
 **React/Next.js State Management:**
+
 - **Never** call setState inside useEffect without dependencies - causes infinite loops
 - Use lazy initialization: `useState(() => localStorage.getItem('key'))` to read once on mount
 - `window.location.href` modifications must happen in useEffect, not during render
 - Next.js `Link` from `next/link` is preferred over `<a>` tags for client-side navigation
 
 **API Documentation Strategies:**
+
 - Swagger UI provides interactive testing environment
 - OpenAPI spec enables auto-generation of client SDKs
 - Frontend API constants prevent typos and enable refactoring
 - TypeScript typed services provide compile-time safety
 
 **Security Notes:**
+
 - JWT secrets MUST be 256+ bits for HS256 algorithm
 - Use environment variables for secrets, never hardcode
 - Current implementation still stores passwords in plain text - **CRITICAL TODO**
 - Need to implement BCrypt password hashing before any production use
 
 **Follow-ups:**
+
 - [ ] **URGENT: Implement BCrypt password hashing in AuthService**
 - [ ] Set up Swagger/OpenAPI documentation
 - [ ] Create typed API service layer in frontend
@@ -290,6 +300,7 @@
 - [ ] Write integration tests for auth flow
 
 **Resources:**
+
 - [JJWT Documentation](https://github.com/jwtk/jjwt)
 - [JWT.io - Token Decoder](https://jwt.io)
 - [Spring Boot Security Best Practices](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)
@@ -305,6 +316,166 @@
 
 ---
 
+## Entry — 2026-02-07 | Area: fullstack/security
+
+- **Title:** BCrypt Password Hashing Implementation & Dynamic Navbar Authentication
+- **Files / Paths:**
+  - `backend/src/main/java/com/example/lifethon/service/AuthService.java`
+  - `backend/src/main/java/com/example/lifethon/config/SecurityConfig.java`
+  - `backend/src/main/java/com/example/lifethon/controller/AuthController.java`
+  - `backend/pom.xml`
+  - `frontend/app/components/NavBar.tsx`
+  - `frontend/contexts/AuthContext.tsx` (recommended)
+- **Stage:** Fixed (BCrypt complete, Auth Context recommended for frontend)
+- **Tags:** #security #authentication #bcrypt #password-hashing #navbar #conditional-rendering #state-management
+
+### Problem / Observation 🚧
+
+- **CRITICAL SECURITY VULNERABILITY:** Passwords stored in plain text in database
+- Plain text password comparison in login (`password.equals(user.getPassword())`)
+- No password strength validation
+- Navbar showed same content for logged-in and non-logged-in users
+- No logout functionality in UI
+- No visual indication of authentication state
+- Frontend components couldn't access auth state globally
+- Maven not recognized in PowerShell environment (tooling issue)
+
+### Action / Fix ✅
+
+**Backend Security Implementation:**
+
+1. Added `spring-boot-starter-security` dependency to `pom.xml`
+2. Created `SecurityConfig.java`:
+   - Configured `BCryptPasswordEncoder` as `@Bean`
+   - Disabled CSRF for API endpoints (using JWT instead)
+   - Set all routes to `permitAll()` (custom JWT auth, not Spring Security's default)
+3. Updated `AuthService.java`:
+   - Injected `PasswordEncoder` via `@Autowired`
+   - **Registration:** Changed `setPassword(password)` to `setPassword(passwordEncoder.encode(password))`
+   - **Login:** Changed `password.equals(...)` to `passwordEncoder.matches(password, user.getPassword())`
+   - Added password length validation (minimum 6 characters)
+4. Updated `AuthController.java`:
+   - Added `/api/auth/verify` endpoint with Authorization header parsing
+   - Added `/api/auth/refresh` endpoint for token renewal
+   - Added `/api/auth/logout` endpoint
+   - Created `MessageResponse` DTO for simple responses
+   - Fixed register method to include username parameter
+
+**Frontend Authentication UI:**
+
+1. Updated `NavBar.tsx` with conditional rendering:
+   - Added `isAuthenticated` state based on localStorage token
+   - Added `username` state for display
+   - Logged-out users see: Home, Login, Sign Up
+   - Logged-in users see: Home, Dashboard, username display, Logout button
+2. Implemented logout functionality:
+   - Calls backend `/api/auth/logout` endpoint
+   - Clears localStorage (token, userId, username, email)
+   - Updates component state
+   - Redirects to login page
+3. Documented Auth Context pattern for global state management (recommended approach)
+
+**API Documentation Strategy:**
+
+- Documented five approaches for managing API endpoints
+- Recommended combination: Swagger/OpenAPI + API constants + typed service layer
+- Created example API constants file structure
+- Outlined Swagger setup with springdoc-openapi
+
+**Development Environment:**
+
+- Identified Maven not in PATH issue in PowerShell
+- Documented four solutions: Maven Wrapper, Install Maven, IDE built-in, Chocolatey
+- Recommended Maven Wrapper (`mvnw.cmd`) as easiest option
+
+### Learnings ✨
+
+**BCrypt Deep Dive:**
+
+- BCrypt is intentionally slow (work factor 10 = 2^10 rounds) to prevent brute force
+- Each hash includes unique salt - same password produces different hashes
+- Hashes start with `$2a$`, `$2b$`, or `$2y$` prefix (identifies BCrypt algorithm)
+- Format: `$2a$10$[22 char salt][31 char hash]`
+- Cannot reverse BCrypt hashes - passwords must be reset, never recovered
+- `passwordEncoder.encode()` for hashing, `passwordEncoder.matches()` for verification
+
+**Spring Security Configuration:**
+
+- Spring Security auto-configures default login form unless explicitly disabled
+- CSRF protection needed for session-based auth, not for stateless JWT
+- `permitAll()` allows public access while keeping Spring Security active for password encoding
+- Can use Spring Security's `@PreAuthorize` for method-level security (future enhancement)
+
+**React State Management Patterns:**
+
+- **Component-level state:** Simple but doesn't persist across component unmounts
+- **localStorage + useEffect:** Works but causes re-renders and doesn't share state
+- **Context API:** Best for global auth state, automatic updates across all components
+- **Custom hooks:** Encapsulate logic, make components cleaner
+- Conditional rendering: `{condition ? <A /> : <B />}` for showing different UI
+
+**Password Security Best Practices:**
+
+- Minimum 8-12 characters recommended (currently 6)
+- Should validate password complexity (uppercase, lowercase, numbers, symbols)
+- Consider password strength meter in frontend
+- Never log passwords (even encrypted)
+- Use HTTPS in production to prevent man-in-the-middle attacks
+- Consider rate limiting on login attempts
+
+**Maven & Build Tools:**
+
+- Maven Wrapper (`mvnw`) bundles specific Maven version with project - best for team consistency
+- IntelliJ/Eclipse have built-in Maven - no separate installation needed
+- `mvn clean` removes target directory, `install` compiles and packages
+- `spring-boot:run` starts embedded Tomcat server
+- PowerShell requires `.cmd` extension for batch files: `mvnw.cmd` not `mvnw`
+
+**Frontend Authentication Patterns:**
+
+- Token verification should happen on protected route entry
+- Navbar should update immediately after login/logout (context helps)
+- Consider refresh token rotation for better security
+- Store minimal data in localStorage (tokens + user ID, not full user object)
+
+**Follow-ups:**
+
+- [ ] Implement Auth Context for global state management (recommended)
+- [ ] Add frontend token verification on app mount
+- [ ] Implement automatic token refresh before expiration
+- [ ] Add password strength validation (8+ chars, complexity rules)
+- [ ] Add password strength meter UI component
+- [ ] Implement rate limiting on auth endpoints (prevent brute force)
+- [ ] Add "Remember me" functionality with longer-lived tokens
+- [ ] Create password reset flow (forgot password)
+- [ ] Add email verification for new accounts
+- [ ] Migrate existing plain-text passwords if any exist in database
+- [ ] Add user profile page
+- [ ] Implement protected route wrapper component
+- [ ] Add loading states and better error messages in login/register
+- [ ] Set up Swagger/OpenAPI documentation
+- [ ] Create comprehensive API documentation
+- [ ] Add password change functionality in user settings
+- [ ] Consider implementing OAuth2 for Google/Facebook login
+- [ ] Add session timeout warning
+- [ ] Implement HTTPS in production
+- [ ] Add security headers (helmet.js equivalent for Spring Boot)
+
+**Resources:**
+
+- [BCrypt Algorithm Explained](https://en.wikipedia.org/wiki/Bcrypt)
+- [Spring Security Documentation](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)
+- [OWASP Password Storage Cheat Sheet](https://cheatsheetsecurity.com/cheatsheets/password-storage-cheat-sheet.html)
+- [React Context API](https://react.dev/reference/react/useContext)
+- [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
+- [Maven Documentation](https://maven.apache.org/guides/index.html)
+
+### STAR-ready bullets ⭐
+
+- **S:** Application had critical security vulnerability with plain-text password storage in database, no password hashing, and insecure authentication flow; additionally, navbar UI didn't reflect user authentication state, preventing users from accessing logout or seeing personalized content
+- **T:** Required implementing industry-standard BCrypt password hashing for both registration and login flows, adding password validation, creating secure token verification endpoints, and building dynamic navbar component that conditionally renders based on authentication state while maintaining clean separation of concerns
+- **A:** Integrated Spring Security dependency and configured BCryptPasswordEncoder bean with work factor 10; refactored AuthService to hash passwords with `passwordEncoder.encode()` during registration and verify with `passwordEncoder.matches()` during login; added password strength validation requiring minimum 6 characters; implemented three new auth endpoints (verify, refresh, logout) with proper Authorization header parsing; updated NavBar component with conditional rendering showing login/signup for unauthenticated users and dashboard/logout for authenticated users; documented Auth Context pattern for global state management and provided five API documentation strategies including Swagger/OpenAPI recommendation
+- **R:** Eliminated critical security vulnerability by implementing BCrypt hashing with unique salts for each password (making database breaches non-exploitable); established production-ready authentication system with token refresh capability; created user-friendly navbar that dynamically updates based on auth state and provides clear logout functionality; improved developer experience by documenting Maven setup issues in PowerShell and providing four solution paths including Maven Wrapper recommendation; set foundation for scalable frontend auth state management with documented Context API pattern; identified 20+ follow-up security enhancements including password complexity rules, rate limiting, and OAuth2 integration for future iterations
 
 # Template — New entries
 
