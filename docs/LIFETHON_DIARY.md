@@ -163,6 +163,149 @@
 
 ---
 
+## Entry — 2026-02-05 | Area: frontend/backend/fullstack
+
+- **Title:** JWT Authentication Implementation & User Registration Flow
+- **Files / Paths:** 
+  - `backend/src/main/java/com/example/lifethon/util/JwtUtil.java`
+  - `backend/src/main/java/com/example/lifethon/service/AuthService.java`
+  - `backend/src/main/java/com/example/lifethon/controller/AuthController.java`
+  - `backend/src/main/resources/application.properties`
+  - `backend/pom.xml`
+  - `frontend/app/login/page.tsx`
+  - `frontend/app/register/page.tsx`
+  - `frontend/app/dashboard/page.tsx`
+- **Stage:** Fixed (JWT complete, password hashing pending)
+- **Tags:** #authentication #jwt #security #fullstack #api-design #learning
+
+### Problem / Observation 🚧
+
+- Authentication system was using placeholder token generation (`"Bearer_" + email + timestamp`)
+- No proper JWT implementation with expiration, claims, or validation
+- Missing user registration frontend page
+- No API endpoint documentation strategy
+- Frontend directly reading from localStorage in render causing React errors
+- Unclear how to manage and document API endpoints across frontend/backend
+- Password storage still in plain text (security vulnerability)
+
+### Action / Fix ✅
+
+**Backend JWT Implementation:**
+1. Added JJWT dependencies (v0.12.3) to `pom.xml`: jjwt-api, jjwt-impl, jjwt-jackson
+2. Created `JwtUtil.java` utility class with:
+   - Token generation with claims (userId, username, email)
+   - Refresh token generation (7-day expiration)
+   - Token validation and verification methods
+   - Claim extraction (email, userId, username, expiration)
+   - Proper exception handling for expired/invalid tokens
+3. Configured JWT properties in `application.properties`:
+   - jwt.secret (256+ bit key for HS256)
+   - jwt.expiration (86400000ms = 24 hours)
+4. Updated `AuthService.java`:
+   - Replaced placeholder token generation with `jwtUtil.generateToken()`
+   - Added `refreshToken()` method for token renewal
+   - Added `verifyToken()` method for validation
+   - Updated `AuthResponse` to include `refreshToken` and `username`
+5. Enhanced `AuthController.java`:
+   - Added `/api/auth/verify` endpoint
+   - Added `/api/auth/refresh` endpoint
+   - Added `/api/auth/logout` endpoint placeholder
+
+**Frontend Implementation:**
+1. Created complete registration page (`app/register/page.tsx`):
+   - Username, email, password, confirm password, firstName, lastName fields
+   - Password match validation
+   - Styled consistently with login page
+   - Social auth buttons (Google/Facebook)
+   - Link back to login page
+2. Updated login page:
+   - Added "Create an account" link to `/register`
+   - Used Next.js `Link` component for navigation
+   - Fixed `window.location.href` usage to avoid React render errors
+3. Fixed Dashboard localStorage access:
+   - Used lazy state initialization to avoid setState in useEffect
+   - Avoided cascading renders
+   - Properly initialized state from localStorage on mount
+
+**API Documentation Strategy:**
+1. Documented approach to manage API endpoints:
+   - Option 1: Create markdown API documentation file
+   - Option 2: Create frontend API constants file with TypeScript
+   - Option 3: Implement Swagger/OpenAPI (recommended for production)
+   - Option 4: Create typed API service layer
+2. Recommended Swagger/OpenAPI + API constants + typed service combination
+
+**Configuration:**
+- JWT secret key configuration (needs production-grade secret)
+- Token expiration settings
+- CORS configuration for frontend-backend communication
+
+### Learnings ✨
+
+**JWT Implementation Deep Dive:**
+- JJWT library uses builder pattern for token creation
+- `SignWith()` requires SecretKey object (Keys.hmacShaKeyFor())
+- Claims are stored in token payload and are readable without secret (but not modifiable)
+- Expiration is checked automatically during parsing
+- Multiple exception types (SignatureException, ExpiredJwtException, etc.) for different failure modes
+
+**Token Strategy Best Practices:**
+- Access tokens: Short-lived (15min-24hr) for API requests
+- Refresh tokens: Long-lived (7-30 days) for getting new access tokens
+- Store both in localStorage (or httpOnly cookies for better security)
+- Token blacklisting needed for proper logout (Redis recommended)
+
+**React/Next.js State Management:**
+- **Never** call setState inside useEffect without dependencies - causes infinite loops
+- Use lazy initialization: `useState(() => localStorage.getItem('key'))` to read once on mount
+- `window.location.href` modifications must happen in useEffect, not during render
+- Next.js `Link` from `next/link` is preferred over `<a>` tags for client-side navigation
+
+**API Documentation Strategies:**
+- Swagger UI provides interactive testing environment
+- OpenAPI spec enables auto-generation of client SDKs
+- Frontend API constants prevent typos and enable refactoring
+- TypeScript typed services provide compile-time safety
+
+**Security Notes:**
+- JWT secrets MUST be 256+ bits for HS256 algorithm
+- Use environment variables for secrets, never hardcode
+- Current implementation still stores passwords in plain text - **CRITICAL TODO**
+- Need to implement BCrypt password hashing before any production use
+
+**Follow-ups:**
+- [ ] **URGENT: Implement BCrypt password hashing in AuthService**
+- [ ] Set up Swagger/OpenAPI documentation
+- [ ] Create typed API service layer in frontend
+- [ ] Implement proper token refresh flow in frontend
+- [ ] Add token blacklist for logout (Redis)
+- [ ] Move JWT secret to environment variables
+- [ ] Generate production-grade secret key (openssl rand -base64 64)
+- [ ] Add rate limiting on auth endpoints
+- [ ] Implement password strength validation
+- [ ] Add email verification flow
+- [ ] Create protected route wrapper component
+- [ ] Add loading states and error handling UI
+- [ ] Write unit tests for JwtUtil
+- [ ] Write integration tests for auth flow
+
+**Resources:**
+- [JJWT Documentation](https://github.com/jwtk/jjwt)
+- [JWT.io - Token Decoder](https://jwt.io)
+- [Spring Boot Security Best Practices](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)
+- [Swagger/OpenAPI Setup](https://springdoc.org/)
+- [Next.js Authentication Patterns](https://nextjs.org/docs/pages/building-your-application/authentication)
+
+### STAR-ready bullets ⭐
+
+- **S:** Tasked with upgrading authentication system from placeholder tokens to production-ready JWT implementation while building complete user registration flow and establishing API documentation strategy for full-stack application
+- **T:** Needed to implement secure JWT token generation with proper expiration and claims, create refresh token mechanism, build registration page matching existing UI patterns, fix React rendering issues with localStorage, and establish clear API endpoint management strategy across frontend and backend
+- **A:** Integrated JJWT library (v0.12.3) with custom JwtUtil class handling token generation/validation/refresh; configured 24-hour access tokens and 7-day refresh tokens with user claims (userId, username, email); created comprehensive registration page with password validation and social auth UI; implemented lazy state initialization to prevent React cascading renders; updated AuthService with token refresh and verification endpoints; documented four API management strategies (markdown docs, constants file, Swagger/OpenAPI, typed service layer) with recommendation for combined approach
+- **R:** Successfully implemented production-ready JWT authentication with token refresh capability, reducing security risk from placeholder tokens; created consistent user registration experience with proper validation; eliminated React rendering errors through proper state initialization; established clear API documentation strategy enabling team scalability and type safety; identified critical next step of BCrypt password hashing before production deployment (currently storing plain text passwords as acknowledged technical debt)
+
+---
+
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
