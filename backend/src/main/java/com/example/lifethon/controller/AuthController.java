@@ -1,6 +1,8 @@
 package com.example.lifethon.controller;
 
 import com.example.lifethon.service.AuthService;
+import com.example.lifethon.service.InvalidCredentialsException;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,9 +99,15 @@ public class AuthController {
     }
 
     @PostMapping("/google")
-    public ResponseEntity<?> googleLogin() {
-        String token = authService.googleLogin();
-        return ResponseEntity.ok(new SimpleAuthResponse("Google login successful", token));
+    public ResponseEntity<?> googleLogin(@RequestBody GoogleLoginRequest request) {
+        try {
+            AuthService.AuthResponse response = authService.googleLogin(request.getIdToken());
+            return ResponseEntity.ok(response);
+        } catch (InvalidCredentialsException e) {
+            return ResponseEntity.status(401).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("Google login failed"));
+        }
     }
 
     @PostMapping("/facebook")
@@ -171,5 +179,12 @@ public class AuthController {
         public void setMessage(String message) { this.message = message; }
         public String getToken() { return token; }
         public void setToken(String token) { this.token = token; }
+    }
+
+    public static class GoogleLoginRequest {
+        private String idToken;
+        
+        public String getIdToken() { return idToken; }
+        public void setIdToken(String idToken) { this.idToken = idToken; }
     }
 }

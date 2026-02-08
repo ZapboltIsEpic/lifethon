@@ -21,6 +21,9 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private OAuthService oAuthService;
+
     public AuthResponse authenticate(String email, String password) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
@@ -149,9 +152,57 @@ public class AuthService {
         // 2. Check blacklist before validating tokens
     }
 
-    public String googleLogin() {
-        // TODO: Implement Google OAuth flow
-        return "google-dummy-token";
+    public AuthResponse googleLogin(String idToken) {
+        // Verify Google token and get user info
+        OAuthService.GoogleUserInfo googleUser = oAuthService.verifyGoogleToken(idToken);
+        
+        // Check if user exists
+        Optional<User> existingUser = userRepository.findByEmail(googleUser.getEmail());
+        
+        if (existingUser.isPresent()) {
+            // User exists - log them in
+            User user = existingUser.get();
+            
+            if (user.getIsActive() == null || !user.getIsActive()) {
+                throw new InvalidCredentialsException("Account is inactive");
+            }
+            
+            String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+            
+            return new AuthResponse(
+                "Google login successful",
+                token,
+                refreshToken,
+                user.getId(),
+                user.getEmail()
+            );
+        } else {
+            // User doesn't exist - create new account
+            User newUser = new User();
+            newUser.setEmail(googleUser.getEmail());
+            newUser.setFirstName(googleUser.getFirstName());
+            newUser.setLastName(googleUser.getLastName());
+            
+            // Set a random password (user won't need it for OAuth login)
+            String randomPassword = java.util.UUID.randomUUID().toString();
+            newUser.setPassword(passwordEncoder.encode(randomPassword));
+            
+            newUser.setIsActive(true);
+            
+            User savedUser = userRepository.save(newUser);
+            
+            String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+            String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
+            
+            return new AuthResponse(
+                "Google account created and logged in",
+                token,
+                refreshToken,
+                savedUser.getId(),
+                savedUser.getEmail()
+            );
+        }
     }
 
     public String facebookLogin() {
