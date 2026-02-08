@@ -57,7 +57,7 @@ const HomePage = () => {
           Set goals. Track progress. Celebrate milestones. Your journey starts
           here.
         </p>
-        <Link href="/login">
+        <Link href="/register">
           <Button
             variant="contained"
             color="primary"
