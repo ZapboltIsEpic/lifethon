@@ -477,6 +477,228 @@
 - **A:** Integrated Spring Security dependency and configured BCryptPasswordEncoder bean with work factor 10; refactored AuthService to hash passwords with `passwordEncoder.encode()` during registration and verify with `passwordEncoder.matches()` during login; added password strength validation requiring minimum 6 characters; implemented three new auth endpoints (verify, refresh, logout) with proper Authorization header parsing; updated NavBar component with conditional rendering showing login/signup for unauthenticated users and dashboard/logout for authenticated users; documented Auth Context pattern for global state management and provided five API documentation strategies including Swagger/OpenAPI recommendation
 - **R:** Eliminated critical security vulnerability by implementing BCrypt hashing with unique salts for each password (making database breaches non-exploitable); established production-ready authentication system with token refresh capability; created user-friendly navbar that dynamically updates based on auth state and provides clear logout functionality; improved developer experience by documenting Maven setup issues in PowerShell and providing four solution paths including Maven Wrapper recommendation; set foundation for scalable frontend auth state management with documented Context API pattern; identified 20+ follow-up security enhancements including password complexity rules, rate limiting, and OAuth2 integration for future iterations
 
+---
+
+## Entry — 2026-02-08 | Area: fullstack/oauth
+
+- **Title:** Google OAuth 2.0 Integration with Backend Token Validation
+- **Files / Paths:**
+  - `backend/src/main/java/com/example/lifethon/service/AuthService.java`
+  - `backend/src/main/java/com/example/lifethon/service/OAuthService.java`
+  - `backend/src/main/java/com/example/lifethon/controller/AuthController.java`
+  - `backend/src/main/resources/application.properties`
+  - `backend/pom.xml`
+  - `frontend/app/layout.tsx`
+  - `frontend/app/login/page.tsx`
+  - `frontend/.env.local`
+- **Stage:** Fixed (Google OAuth complete, Facebook OAuth pending)
+- **Tags:** #oauth #google-login #authentication #social-auth #token-validation #fullstack #api-integration
+
+### Problem / Observation 🚧
+
+- Application only supported traditional email/password authentication
+- Users had to create separate accounts instead of using existing Google accounts
+- No social login options reducing user convenience and signup conversion
+- `googleLogin()` and `facebookLogin()` methods in AuthService were placeholder stubs returning dummy tokens
+- Unclear OAuth implementation strategy (backend-only vs frontend-initiated)
+- No Google Cloud project or OAuth credentials configured
+- Frontend had dummy Google button that didn't actually authenticate
+- Needed to handle OAuth flow securely without exposing secrets in frontend
+- User creation logic needed for OAuth users who don't have passwords
+- Provider context hierarchy unclear for combining Google OAuth with existing AuthProvider
+
+### Action / Fix ✅
+
+**Google Cloud & OAuth Setup:**
+
+1. Created Google Cloud Project "LifeThon"
+2. Enabled Google+ API for user profile access
+3. Configured OAuth consent screen (external, with app name and contact info)
+4. Created OAuth 2.0 Web Application credentials
+5. Set authorized JavaScript origins: `http://localhost:3000`
+6. Set authorized redirect URIs: `http://localhost:3000/auth/google/callback`
+7. Obtained and secured Google Client ID (saved in environment variables)
+
+**Backend OAuth Implementation:**
+
+1. Added dependencies to `pom.xml`:
+   - `google-api-client` (v2.2.0) for Google ID token verification
+   - `google-http-client-jackson2` (v1.43.3) for JSON processing
+2. Created `OAuthService.java` with token verification methods:
+   - `verifyGoogleToken()` - validates ID token with Google's servers using `GoogleIdTokenVerifier`
+   - `verifyFacebookToken()` - validates access token with Facebook Graph API (prepared for future)
+   - Extracts user info: email, firstName, lastName, profile picture
+   - Returns strongly-typed `GoogleUserInfo` and `FacebookUserInfo` POJOs
+3. Updated `AuthService.java`:
+   - Injected `OAuthService` via `@Autowired`
+   - Implemented `googleLogin(String idToken)`:
+     - Verifies token authenticity with Google
+     - Checks if user exists by email
+     - If exists: logs in existing user with JWT
+     - If new: creates account with random BCrypt password, saves to DB, returns JWT
+   - Implemented `facebookLogin(String accessToken)` with same pattern (ready for activation)
+   - Auto-creates OAuth users without requiring password (sets random UUID password)
+4. Updated `AuthController.java`:
+   - Changed `/api/auth/google` from no-param to accepting `GoogleLoginRequest` DTO
+   - Changed `/api/auth/facebook` from no-param to accepting `FacebookLoginRequest` DTO
+   - Added proper request body parsing with `@RequestBody`
+   - Enhanced error handling (401 for invalid tokens, 500 for server errors)
+5. Configured `application.properties`:
+   - Added `oauth.google.client-id` property
+   - Added `oauth.facebook.app-id` and `oauth.facebook.app-secret` (placeholders)
+
+**Frontend OAuth Integration:**
+
+1. Installed `@react-oauth/google` package (official Google OAuth library for React)
+2. Updated `app/layout.tsx`:
+   - Wrapped app in `GoogleOAuthProvider` with client ID from environment
+   - Established provider hierarchy: `GoogleOAuthProvider` → `AuthProvider` → app content
+   - Ensures Google OAuth context available throughout application
+3. Created `.env.local` with `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+4. Updated `app/login/page.tsx`:
+   - Removed custom Google button, replaced with official `<GoogleLogin>` component
+   - Implemented `handleGoogleSuccess()`:
+     - Extracts credential (ID token) from Google response
+     - Sends to backend `/api/auth/google` endpoint
+     - Receives JWT token from backend
+     - Uses `AuthContext.login()` for centralized state management
+   - Implemented `handleGoogleError()` callback for user cancellations
+   - Configured Google button: outline theme, large size, "continue_with" text
+   - Integrated with existing AuthContext (no direct localStorage manipulation)
+5. Leveraged existing `AuthContext`:
+   - `login()` method handles token storage and navigation
+   - Navbar automatically updates on successful OAuth login
+   - Token verification still happens on protected routes
+
+**Security Patterns:**
+
+- Frontend never sees or stores Google Client Secret (not needed for ID token flow)
+- Backend validates tokens with Google's servers (prevents token forgery)
+- OAuth users get random passwords (prevents unauthorized password login)
+- Same JWT auth flow used for both OAuth and traditional login (consistency)
+- ID tokens verified using Google's official libraries (best practice)
+
+**Architecture Decision:**
+
+- Chose **Scenario B** (Frontend-initiated, Backend-validates):
+  - Frontend uses Google's popup/redirect to get ID token
+  - Backend verifies token authenticity and extracts user info
+  - More secure than backend-only redirect (no secret exposure)
+  - Better UX (popup instead of full redirect)
+  - Industry standard pattern used by major applications
+
+### Learnings ✨
+
+**OAuth 2.0 Flow Deep Dive:**
+
+- **ID Token vs Access Token:**
+  - ID Token: JWT containing user identity info (email, name, etc.) - used for authentication
+  - Access Token: Opaque string for accessing Google APIs - used for authorization
+  - We use ID token for login (don't need API access)
+- **Token Verification is Critical:**
+  - Never trust tokens from frontend without backend verification
+  - Google provides `GoogleIdTokenVerifier` to validate signatures
+  - Verifier checks: signature, issuer, audience, expiration
+- **OAuth doesn't require backend Client Secret** for ID token validation (only Client ID needed)
+- **Audience claim** in ID token must match your Client ID (prevents token theft)
+
+**Google OAuth Provider Hierarchy:**
+
+- Per official [@react-oauth/google docs](https://github.com/MomenSherif/react-oauth-google):
+  - Provider should wrap entire app at root level, not individual components
+  - Wrapping per-component causes re-initialization on every render (performance issue)
+  - Context must be available to all components that might use `<GoogleLogin>`
+- **Correct pattern:** `GoogleOAuthProvider` wraps `AuthProvider` wraps app
+- Both contexts coexist and complement each other
+
+**Spring Boot OAuth Integration:**
+
+- Spring Security OAuth2 would be overkill for just token validation
+- Manual validation with `google-api-client` gives more control
+- Can validate Google tokens without full Spring Security OAuth2 setup
+- `RestTemplate` works well for Facebook Graph API calls
+- Consider using `WebClient` for async operations in future (more modern than `RestTemplate`)
+
+**User Management for OAuth:**
+
+- OAuth users don't have passwords in traditional sense
+- Strategy: Set random UUID password with BCrypt (prevents password login attacks)
+- Alternative strategies considered:
+  - NULL password field (rejected - violates NOT NULL constraint)
+  - Special marker password (rejected - less secure)
+  - Separate OAuth user table (rejected - over-engineering)
+- Email is unique identifier linking OAuth and traditional accounts
+- If user registers traditionally, then tries OAuth: logs into existing account
+- If user logs in via OAuth, then tries traditional: must reset password
+
+**Frontend Best Practices:**
+
+- Official `<GoogleLogin>` component handles:
+  - Button styling per Google brand guidelines
+  - Popup/redirect flow
+  - Token retrieval
+  - CSRF protection
+  - One Tap support (prompts returning users automatically)
+- `useOneTap` prop enables seamless re-authentication
+- Environment variables pattern: `NEXT_PUBLIC_*` for client-side variables in Next.js
+
+**Security Considerations:**
+
+- Never send Client Secret to frontend
+- ID tokens are short-lived (1 hour typically)
+- Backend should always verify tokens, never trust frontend
+- OAuth users should verify email ownership (Google already does this)
+- Consider adding state parameter for CSRF protection in production
+- Rate limit OAuth endpoints to prevent abuse
+
+**Debugging OAuth Issues:**
+
+- Check Google Cloud Console for authorized origins/redirects
+- Verify Client ID matches exactly (copy-paste, don't type)
+- Test in incognito mode (cookies/cache can interfere)
+- Check browser console for detailed error messages from Google
+- Backend logs show token verification failures with specific reasons
+
+**Follow-ups:**
+
+- [ ] Complete Facebook OAuth integration (similar to Google pattern)
+- [ ] Add OAuth provider icons/branding to login page
+- [ ] Implement account linking (merge OAuth and traditional accounts)
+- [ ] Add email verification for traditional signups to match OAuth security
+- [ ] Store OAuth provider info in User entity (google_id, facebook_id columns)
+- [ ] Add profile picture URL storage from OAuth providers
+- [ ] Implement "Continue with Google" on register page too
+- [ ] Add loading states during OAuth flow
+- [ ] Handle edge case: user deletes Google account, then tries to login
+- [ ] Add option to disconnect OAuth provider from settings
+- [ ] Implement OAuth token refresh (for accessing Google APIs later)
+- [ ] Add state parameter for CSRF protection
+- [ ] Consider supporting additional OAuth providers (GitHub, Microsoft, Apple)
+- [ ] Add analytics tracking for OAuth vs traditional login
+- [ ] Test OAuth flow on production domain (not just localhost)
+- [ ] Add rate limiting on OAuth endpoints
+- [ ] Implement account recovery for OAuth-only accounts
+- [ ] Add "Sign in with Google" button to registration page
+- [ ] Store last login method in database for UX improvements
+- [ ] Handle Google account email changes (rare but possible)
+
+**Resources:**
+
+- [Google OAuth 2.0 Documentation](https://developers.google.com/identity/protocols/oauth2)
+- [Google ID Token Validation](https://developers.google.com/identity/sign-in/web/backend-auth)
+- [@react-oauth/google Official Docs](https://github.com/MomenSherif/react-oauth-google)
+- [OAuth 2.0 Simplified](https://aaronparecki.com/oauth-2-simplified/)
+- [Google API Client for Java](https://github.com/googleapis/google-api-java-client)
+- [OWASP OAuth Security Cheat Sheet](https://cheatsheetsecurity.com/cheatsheets/oauth-2-0-security-cheat-sheet/)
+- [Next.js Environment Variables](https://nextjs.org/docs/pages/building-your-application/configuring/environment-variables)
+
+### STAR-ready bullets ⭐
+
+- **S:** Application lacked social login functionality, forcing users to create separate accounts instead of leveraging existing Google credentials; had placeholder OAuth methods returning dummy tokens with no actual implementation; needed to design secure OAuth flow without exposing API secrets to frontend
+- **T:** Required implementing complete Google OAuth 2.0 flow with frontend-initiated authentication and backend token validation; needed to set up Google Cloud Project with proper credentials and authorized origins; had to create secure user management for OAuth accounts without passwords; must integrate official Google OAuth library while maintaining existing AuthContext state management and auto-redirect functionality
+- **A:** Set up Google Cloud Project with OAuth 2.0 credentials and configured authorized JavaScript origins; integrated Google API Client library in Spring Boot backend with custom OAuthService for token verification using GoogleIdTokenVerifier; implemented user auto-creation with random BCrypt passwords for OAuth users; created frontend integration with official @react-oauth/google library wrapped at root layout level; established provider hierarchy (GoogleOAuthProvider → AuthProvider) following official documentation best practices; built secure token exchange flow where frontend obtains ID token from Google popup, sends to backend for verification, backend validates with Google servers and returns JWT; integrated OAuth login with existing AuthContext using centralized login() method for state management and automatic navbar updates
+- **R:** Successfully implemented production-ready Google OAuth authentication enabling users to sign in with existing Google accounts; achieved seamless integration with existing JWT auth system using same token format and validation flow; established secure architecture where Client Secret never exposed to frontend and all tokens verified server-side; created automatic user provisioning for new OAuth users while preventing duplicate accounts through email matching; improved user experience with official Google-branded login button supporting One Tap re-authentication; set foundation for multi-provider OAuth support with reusable patterns documented for Facebook and other providers; reduced signup friction and increased security by leveraging Google's identity verification instead of requiring email verification flow
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
