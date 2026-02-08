@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 
 const RegisterPage = () => {
   const [email, setEmail] = useState("");
@@ -197,17 +197,15 @@ const RegisterPage = () => {
 
         <div className="mt-6 space-y-3">
           <div className="mt-6 flex justify-center">
-            <GoogleOAuthProvider clientId="981824546089-lmj3no8nrqt2efkdt13o9vmg8nh7fmaf.apps.googleusercontent.com">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                theme="outline"
-                size="large"
-                text="continue_with"
-                shape="rectangular"
-              />
-            </GoogleOAuthProvider>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              text="continue_with"
+              shape="rectangular"
+            />
           </div>
         </div>
 
