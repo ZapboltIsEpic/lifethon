@@ -699,6 +699,45 @@
 - **A:** Set up Google Cloud Project with OAuth 2.0 credentials and configured authorized JavaScript origins; integrated Google API Client library in Spring Boot backend with custom OAuthService for token verification using GoogleIdTokenVerifier; implemented user auto-creation with random BCrypt passwords for OAuth users; created frontend integration with official @react-oauth/google library wrapped at root layout level; established provider hierarchy (GoogleOAuthProvider → AuthProvider) following official documentation best practices; built secure token exchange flow where frontend obtains ID token from Google popup, sends to backend for verification, backend validates with Google servers and returns JWT; integrated OAuth login with existing AuthContext using centralized login() method for state management and automatic navbar updates
 - **R:** Successfully implemented production-ready Google OAuth authentication enabling users to sign in with existing Google accounts; achieved seamless integration with existing JWT auth system using same token format and validation flow; established secure architecture where Client Secret never exposed to frontend and all tokens verified server-side; created automatic user provisioning for new OAuth users while preventing duplicate accounts through email matching; improved user experience with official Google-branded login button supporting One Tap re-authentication; set foundation for multi-provider OAuth support with reusable patterns documented for Facebook and other providers; reduced signup friction and increased security by leveraging Google's identity verification instead of requiring email verification flow
 
+---
+
+## Entry — 2026-02-10 | Area: frontend/backend
+
+- **Title:** Gacha System Implementation with Pity Mechanics
+- **Files / Paths:** `backend/src/main/java/com/example/lifethon/entity/`, `backend/src/main/java/com/example/lifethon/service/GachaService.java`, `frontend/app/gacha/page.tsx`, `frontend/app/dashboard/page.tsx`
+- **Stage:** WIP
+- **Tags:** #feature #game-mechanics #full-stack
+
+### Problem / Observation 🚧
+
+- Needed a monetization/engagement system for the LifeThon app
+- Required secure implementation where user data comes from JWT, not URL params
+- Debated between separate admin frontend vs single frontend with role-based pages
+
+### Action / Fix ✅
+
+- Built complete gacha system with 4 entities (GachaItem, UserInventory, GachaPull, UserCoins)
+- Implemented pity system: hard pity at 90 pulls, soft pity starting at 75 with rate increases
+- Created 3 services (GachaService, InventoryService, CoinService) and matching REST controllers
+- Built React frontend with pull animations, rarity-based styling, and real-time data fetching
+- Used `/dashboard` and `/gacha` routes (no userId in URL) - security via JWT extraction on backend
+- Auto-populated sample gacha items via Spring Boot CommandLineRunner
+
+### Learnings ✨
+
+- JWT token should carry user identity, not URL - prevents unauthorized access attempts
+- Single frontend with admin pages is simpler than separate admin app (shared auth, styling, components)
+- Pity systems require careful rate calculation and pull history tracking
+- TypeScript interfaces must match backend DTOs exactly for type safety
+- React useEffect must be placed after function declarations to avoid "cannot access before initialization"
+
+### STAR-ready bullets ⭐
+
+- **S:** LifeThon app needed engaging monetization feature with secure user data handling
+- **T:** Design and implement full-stack gacha system with drop rates, pity mechanics, inventory, and virtual currency
+- **A:** Built Spring Boot backend with JPA entities, services with transactional integrity, REST APIs; created React frontend with animations and real-time updates; secured all endpoints via JWT extraction
+- **R:** Delivered working gacha with 5 rarity tiers (1%-60% rates), 90-pull pity guarantee, multi-pull discounts, and responsive UI ready for production
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)

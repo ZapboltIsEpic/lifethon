@@ -2,9 +2,71 @@
 
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+
+interface UserCoins {
+  coins: number;
+  totalEarned: number;
+  totalSpent: number;
+}
+
+interface InventoryStats {
+  totalItems: number;
+  uniqueItems: number;
+}
 
 const Dashboard = () => {
   const { user, logout, isLoading } = useAuth();
+  const [coins, setCoins] = useState<UserCoins | null>(null);
+  const [inventoryStats, setInventoryStats] = useState<InventoryStats | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (user) {
+      fetchCoins();
+      fetchInventoryStats();
+    }
+  }, [user]);
+
+  const fetchCoins = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:8081/api/coins", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCoins(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch coins:", err);
+    }
+  };
+
+  const fetchInventoryStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:8081/api/inventory/stats",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch inventory stats:", err);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -20,26 +82,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-800">LifeThon</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">{user.email}</span>
-              <button
-                onClick={logout}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
@@ -56,12 +98,16 @@ const Dashboard = () => {
 
             <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow p-6 text-white">
               <h2 className="text-lg font-semibold mb-2">Your Coins</h2>
-              <p className="text-3xl font-bold">Loading...</p>
+              <p className="text-3xl font-bold">
+                {coins ? `💰 ${coins.coins}` : "💰 0"}
+              </p>
             </div>
 
             <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow p-6 text-white">
               <h2 className="text-lg font-semibold mb-2">Items Collected</h2>
-              <p className="text-3xl font-bold">0</p>
+              <p className="text-3xl font-bold">
+                {inventoryStats ? inventoryStats.totalItems : 0}
+              </p>
             </div>
           </div>
 
