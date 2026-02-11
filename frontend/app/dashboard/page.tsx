@@ -16,7 +16,7 @@ interface InventoryStats {
 }
 
 const Dashboard = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, isAdmin } = useAuth();
   const [coins, setCoins] = useState<UserCoins | null>(null);
   const [inventoryStats, setInventoryStats] = useState<InventoryStats | null>(
     null,
@@ -168,6 +168,17 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {isAdmin() && (
+          <Link
+            href="/admin/gacha"
+            className="bg-gradient-to-br from-red-500 to-orange-500 text-white p-6 rounded-lg hover:shadow-lg transition-shadow text-center"
+          >
+            <div className="text-4xl mb-2">🔧</div>
+            <h3 className="font-bold text-lg">Admin Panel</h3>
+            <p className="text-sm opacity-90">Manage gacha items</p>
+          </Link>
+        )}
       </div>
     </div>
   );
