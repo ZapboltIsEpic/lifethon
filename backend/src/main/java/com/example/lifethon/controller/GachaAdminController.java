@@ -110,8 +110,6 @@ public class GachaAdminController {
             return ResponseEntity.status(403).body(new ErrorResponse(e.getMessage()));
         } catch (RuntimeException e) {
             return ResponseEntity.status(404).body(new ErrorResponse(e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(400).body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(new ErrorResponse("Failed to update item: " + e.getMessage()));
         }
