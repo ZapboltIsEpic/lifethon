@@ -28,6 +28,7 @@ const LoginPage = () => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.userId);
         localStorage.setItem("email", data.email);
+        localStorage.setItem("role", data.role);
 
         // Redirect to dashboard
         window.location.href = "/dashboard";
