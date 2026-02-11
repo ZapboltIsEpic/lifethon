@@ -13,6 +13,7 @@ interface User {
   userId: string;
   email: string;
   token: string;
+  role: string;
 }
 
 interface AuthContextType {
@@ -21,6 +22,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,8 +41,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const token = localStorage.getItem("token");
       const userId = localStorage.getItem("userId");
       const email = localStorage.getItem("email");
+      const role = localStorage.getItem("role");
 
-      if (token && userId && email) {
+      if (token && userId && email && role) {
         try {
           // Verify token with backend
           const response = await fetch(
@@ -54,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           );
 
           if (response.ok) {
-            setUser({ token, userId, email });
+            setUser({ token, userId, email, role });
 
             // If on login/register page and authenticated, redirect to dashboard
             if (publicRoutes.includes(pathname)) {
@@ -102,6 +105,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push("/login");
   };
 
+  const isAdmin = () => {
+    return user?.role === "ADMIN";
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -110,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         isAuthenticated: !!user,
         isLoading,
+        isAdmin,
       }}
     >
       {children}
