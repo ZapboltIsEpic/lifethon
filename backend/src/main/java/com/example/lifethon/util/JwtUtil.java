@@ -1,5 +1,6 @@
 package com.example.lifethon.util;
 
+import com.example.lifethon.entity.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
@@ -25,11 +26,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // Generate JWT token for a user
-    public String generateToken(String email, Long userId) {
+    // Generate JWT token for a user with role
+    public String generateToken(String email, Long userId, User.Role role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("email", email);
+        claims.put("role", role.name()); // Add role to token
 
         return Jwts.builder()
                 .claims(claims)
@@ -58,6 +60,11 @@ public class JwtUtil {
     // Extract userId from token
     public Long extractUserId(String token) {
         return extractClaims(token).get("userId", Long.class);
+    }
+
+    // Extract role from token
+    public String extractRole(String token) {
+        return extractClaims(token).get("role", String.class);
     }
 
     // Extract expiration date
@@ -111,6 +118,16 @@ public class JwtUtil {
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+    
+    // Check if user is admin
+    public Boolean isAdmin(String token) {
+        try {
+            String role = extractRole(token);
+            return "ADMIN".equals(role);
+        } catch (Exception e) {
             return false;
         }
     }
