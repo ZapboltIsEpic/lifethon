@@ -52,7 +52,7 @@ public class AuthService {
         }
 
         // Generate JWT token using JwtUtil
-        String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
 
         return new AuthResponse(
@@ -99,7 +99,7 @@ public class AuthService {
         User savedUser = userRepository.save(newUser);
 
         // Generate JWT token using JwtUtil
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
 
         return new AuthResponse(
@@ -122,7 +122,7 @@ public class AuthService {
                     User user = userOptional.get();
                     
                     // Generate new tokens
-                    String newToken = jwtUtil.generateToken(user.getEmail(), user.getId());
+                    String newToken = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
                     String newRefreshToken = jwtUtil.generateRefreshToken(user.getEmail());
                     
                     return new AuthResponse(
@@ -167,7 +167,7 @@ public class AuthService {
                 throw new InvalidCredentialsException("Account is inactive");
             }
             
-            String token = jwtUtil.generateToken(user.getEmail(), user.getId());
+            String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
             String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
             
             return new AuthResponse(
@@ -192,7 +192,7 @@ public class AuthService {
             
             User savedUser = userRepository.save(newUser);
             
-            String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId());
+            String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole());
             String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
             
             return new AuthResponse(
