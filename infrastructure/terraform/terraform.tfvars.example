@@ -1,0 +1,62 @@
+# LifeThon Infrastructure - Variable Values
+# Copy this file to terraform.tfvars and update with your values
+# DO NOT commit terraform.tfvars to version control!
+
+# AWS Configuration
+aws_region  = "ap-southeast-2"  # Sydney
+environment = "dev"             # dev, staging, or prod
+
+# Project Information
+project_name = "lifethon"
+owner_email  = "your-email@example.com"
+
+# EC2 Configuration
+ec2_instance_type    = "t3.small"    # 2 vCPU, 2GB RAM
+asg_min_size         = 1
+asg_max_size         = 4
+asg_desired_capacity = 2
+
+# RDS Configuration
+db_instance_class        = "db.t4g.micro"  # Free tier eligible
+db_allocated_storage     = 20              # GB
+db_max_allocated_storage = 100             # GB
+db_name                  = "LifeThon"
+db_username              = "postgres"
+db_password              = "CHANGE-THIS-SECURE-PASSWORD-123!"  # IMPORTANT: Change this!
+db_backup_retention_days = 7
+
+# Application Configuration
+jwt_secret     = "your-super-secret-jwt-key-minimum-32-characters-long-please-change-this"  # IMPORTANT: Change this!
+jwt_expiration = 86400000  # 24 hours in milliseconds
+
+# Monitoring
+enable_detailed_monitoring = true
+log_retention_days         = 7
+
+# Additional Tags (optional)
+additional_tags = {
+  CostCenter = "Engineering"
+  Team       = "Backend"
+}
+
+# -----------------------------
+# PRODUCTION VALUES (example)
+# -----------------------------
+# Uncomment and modify for production deployment:
+
+# environment = "prod"
+# 
+# # Larger instances for production
+# ec2_instance_type    = "t3.medium"   # 2 vCPU, 4GB RAM
+# asg_min_size         = 2
+# asg_max_size         = 8
+# asg_desired_capacity = 4
+# 
+# # Production database
+# db_instance_class        = "db.t4g.small"
+# db_allocated_storage     = 50
+# db_max_allocated_storage = 500
+# db_backup_retention_days = 30
+# 
+# # Longer log retention
+# log_retention_days = 30
