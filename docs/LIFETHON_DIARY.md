@@ -738,6 +738,46 @@
 - **A:** Built Spring Boot backend with JPA entities, services with transactional integrity, REST APIs; created React frontend with animations and real-time updates; secured all endpoints via JWT extraction
 - **R:** Delivered working gacha with 5 rarity tiers (1%-60% rates), 90-pull pity guarantee, multi-pull discounts, and responsive UI ready for production
 
+---
+
+## Entry — 2026-02-12 | Area: full-stack
+
+- **Title:** Role-Based Admin System for Gacha Management
+- **Files / Paths:** `backend/src/main/java/com/example/lifethon/entity/User.java`, `backend/src/main/java/com/example/lifethon/util/JwtUtil.java`, `backend/src/main/java/com/example/lifethon/controller/GachaAdminController.java`, `backend/src/main/java/com/example/lifethon/service/GachaAdminService.java`, `frontend/contexts/AuthContext.tsx`, `frontend/app/dashboard/page.tsx`, `frontend/app/admin/gacha/page.tsx`
+- **Stage:** Fixed
+- **Tags:** #feature #security #admin #full-stack
+
+### Problem / Observation 🚧
+
+- Needed admin functionality to create/edit/delete gacha items and manage drop rates
+- Debated separate admin app vs single app with role-based pages
+- Required secure role verification without database calls on every request
+
+### Action / Fix ✅
+
+- Added `role` enum (USER/ADMIN) to User entity with database migration
+- Updated JwtUtil to embed role in JWT token and added `isAdmin()` verification method
+- Created GachaAdminController with 7 endpoints (CRUD, toggle, validate rates, stats) using role-based authorization
+- Built GachaAdminService for item management with drop rate validation (must sum to 100%)
+- Updated AuthContext to include role in user interface and expose `isAdmin()` helper
+- Added admin panel UI in Quick Actions grid (conditionally rendered for admins only)
+- SQL upgrade path: `UPDATE users SET role = 'ADMIN' WHERE email = '...'`
+
+### Learnings ✨
+
+- JWT claims are perfect for roles - no DB query per request, tamper-proof via signature
+- TypeScript requires updating both interface definition AND default context value when adding new properties
+- Single frontend with role-based routes is simpler than separate admin app (shared auth, components, styling)
+- Drop rate validation critical for gacha systems - active items must always sum to 100%
+- Admin endpoints should fail-secure: verify role first, then process request
+
+### STAR-ready bullets ⭐
+
+- **S:** Gacha system needed admin controls for item management, but adding role-based access required secure implementation without performance overhead
+- **T:** Design and implement role-based authorization system allowing admins to manage gacha items while preventing unauthorized access
+- **A:** Added role enum to User entity; embedded role in JWT claims for stateless verification; created admin endpoints with `isAdmin()` checks; built React admin panel with conditional rendering; provided SQL upgrade path for existing users
+- **R:** Delivered secure admin system with zero DB overhead per request; admins can manage 20+ items via CRUD operations, validate drop rates in real-time, and view statistics; regular users have no access via 403 responses
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
