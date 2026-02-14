@@ -778,6 +778,43 @@
 - **A:** Added role enum to User entity; embedded role in JWT claims for stateless verification; created admin endpoints with `isAdmin()` checks; built React admin panel with conditional rendering; provided SQL upgrade path for existing users
 - **R:** Delivered secure admin system with zero DB overhead per request; admins can manage 20+ items via CRUD operations, validate drop rates in real-time, and view statistics; regular users have no access via 403 responses
 
+---
+
+## Entry — 2026-02-15 | Area: frontend
+
+- **Title:** Next.js Component Architecture - Server vs Client Components
+- **Files / Paths:** `frontend/app/flashcards/page.tsx`, `frontend/components/FlashcardPractice.tsx`
+- **Stage:** Fixed
+- **Tags:** #learning #refactor #architecture #best-practices
+
+### Problem / Observation 🚧
+
+- Initially put all logic directly in `page.tsx` with `"use client"`, treating it like a regular React component
+- This violated Next.js best practices: pages should default to Server Components, with Client Components extracted separately
+- Larger JavaScript bundle shipped to client, missing performance benefits of server-side rendering
+
+### Action / Fix ✅
+
+- Refactored to keep `page.tsx` as Server Component (no `"use client"`)
+- Extracted all interactive logic to `components/FlashcardPractice.tsx` with `"use client"` directive
+- Followed Next.js pattern: page = routing layer, component = interactivity layer
+- Referenced official docs: "Add 'use client' to specific interactive components instead of marking large parts of your UI as Client Components"
+
+### Learnings ✨
+
+- Server Components are default in Next.js App Router - `"use client"` should be exception, not rule
+- Separation enables future server-side data fetching in page while keeping client bundle small
+- Better architecture: page.tsx for routing/data, separate components for interactivity
+- When in doubt, check docs rather than assume based on previous React experience
+- Performance: smaller JS bundle = faster initial load
+
+### STAR-ready bullets ⭐
+
+- **S:** Building flashcard feature for interview prep, initially structured all logic in page.tsx with "use client"
+- **T:** Realized approach violated Next.js architecture - needed to refactor to follow Server/Client Component best practices
+- **A:** Studied official Next.js docs, refactored page to Server Component, extracted interactive logic to separate Client Component, reduced client bundle size
+- **R:** Cleaner architecture following framework conventions, smaller JavaScript bundle, easier to add server-side features later, learned to verify assumptions against official documentation
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
