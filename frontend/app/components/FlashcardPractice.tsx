@@ -9,6 +9,12 @@ interface BehavioralQuestion {
   question: string;
   category: string;
   tips?: string;
+  answer?: {
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+  };
 }
 
 const behavioralQuestions: BehavioralQuestion[] = [
@@ -18,6 +24,15 @@ const behavioralQuestions: BehavioralQuestion[] = [
       "Tell me about a time in which you had a conflict and needed to influence somebody else.",
     category: "Conflict Resolution",
     tips: "Use STAR method: Situation, Task, Action, Result. Focus on how you influenced positively.",
+    answer: {
+      situation:
+        "During my university capstone project, our team of six was building WaddleWait – a full-stack web application for restaurant waiters. We used React for the frontend, Django for the backend, and PostgreSQL for the database. In our first sprint, we committed to delivering a working prototype with user authentication and basic table management.\n\nI was responsible for the frontend, and a teammate handled the backend API. At sprint planning, we verbally agreed on the API endpoints and data formats, but we didn't document anything. Mid-sprint, the backend team made changes to the API – renaming fields and altering response structures – to accommodate database optimizations. They assumed I would notice, but they never communicated the changes. On the final day, when I tried to integrate, the application crashed.",
+      task: "We missed the sprint deadline by three days. During the retrospective, blame fell mostly on me. Some teammates felt I should have been more proactive in checking the API or asking for updates. I felt frustrated because I genuinely didn't know the API had changed. My task was to defend myself without becoming defensive, and more importantly, to convince the team that the real problem wasn't any one person – it was that our communication process was broken. I needed to influence them to adopt better practices.",
+      action:
+        "I started by taking ownership of my part. I said: 'Yes, I could have asked for updates more frequently. I'll own that.' That immediately lowered the tension – people saw I wasn't trying to dodge responsibility.\n\nThen I calmly explained my perspective: 'But I also didn't know the API had changed because we had no formal way of communicating those changes. If we rely on verbal agreements and hope people notice, this will keep happening to someone else.'\n\nI didn't just complain – I came with solutions. I proposed:\n1. A daily 15-minute stand-up where everyone briefly shares what they're working on and any changes that might affect others.\n2. Pair programming sessions between frontend and backend members during API design, so we align early.\n3. A shared API documentation using something like Swagger or even just a living Google Doc that serves as the single source of truth.\n\nI framed it around the team's goal: 'We all want to deliver a great project and stop missing deadlines. These changes will help us catch issues early and save us from last-minute firefights.' I asked if we could try the daily stand-ups for just one week and see if it helped.",
+      result:
+        "The team agreed to try my suggestions. The daily stand-ups immediately improved visibility – we caught potential issues early because people spoke up. The pair programming sessions during API design meant frontend and backend were aligned before a single line of code was written. We also started documenting endpoints in a shared doc.\n\nThe result? We never missed another deadline. Our second sprint delivered on time, and integration became smooth. A few weeks later, one teammate even thanked me for pushing for those changes – they said it made the project less stressful for everyone.\n\nPersonally, I learned that influence isn't about being right or winning an argument. It's about taking accountability for your part, then focusing on solutions that help the whole team succeed. Even when you're blamed, you can lead by proposing better systems.",
+    },
   },
   {
     id: 2,
@@ -44,6 +59,15 @@ const behavioralQuestions: BehavioralQuestion[] = [
       "How do you tackle challenges? Name a difficult challenge you faced while working on a project, how you overcame it, and what you learned.",
     category: "Problem Solving",
     tips: "Break down your approach: analyze, research, implement, test, iterate.",
+    answer: {
+      situation:
+        "While setting up the backend for LifeThon (Spring Boot + PostgreSQL), my application repeatedly failed to connect to the database with a 'connection refused' error. I initially assumed the database was running on the default port 5432, but the error persisted even after confirming the PostgreSQL service was active.\n\nI was responsible for setting up the entire infrastructure, including the database connection, authentication system, and API endpoints. The database connectivity was blocking progress on all features that required data persistence.",
+      task: "I needed to resolve the connectivity issue quickly so I could continue developing authentication and other features that depended on the database. The pressure was high because this was blocking not just me, but potentially other team members who would need database access for their features.\n\nMy task was to systematically diagnose why the connection was failing despite PostgreSQL appearing to be running, and fix it without wasting time on trial-and-error guessing.",
+      action:
+        "I tackled this using my structured approach to challenges:\n\n1. Analyze: I checked the PostgreSQL service status using 'systemctl' – it was running. I then used 'netstat -ano | findstr :5432' to see if anything was listening on the default port. Nothing was.\n\n2. Research: I recalled that 'connection refused' often means the port is wrong or the service isn't bound to the expected address. I looked up how to check PostgreSQL's actual port by inspecting 'postgresql.conf'.\n\n3. Hypothesize: I suspected the port had been changed during installation, possibly to avoid conflicts with other services.\n\n4. Test: I opened 'postgresql.conf' and found 'port = 8080'. I verified that the PostgreSQL process was indeed listening on 8080 using 'netstat'.\n\n5. Implement: I updated my Spring Boot 'application.properties' to 'jdbc:postgresql://localhost:8080/LifeThon'.\n\n6. Test: I restarted the application and the connection succeeded.\n\n7. Iterate/Learn: I documented the actual port in our project wiki and added a note to always verify infrastructure configuration instead of assuming defaults. I also shared this with my team during stand-up so everyone was aware.",
+      result:
+        "The blocker was removed within an hour, and I was able to continue development. The database connection worked flawlessly from that point forward.\n\nWhat I learned: This challenge reinforced the importance of systematic investigation. It's easy to assume defaults, but real-world systems often deviate. By breaking the problem down, testing each component, and not jumping to conclusions, I can resolve issues faster and more reliably.\n\nI now apply this same structured approach to any technical challenge – whether it's debugging code, fixing infrastructure, or even team communication problems. This experience became my template for troubleshooting: verify assumptions first, form hypotheses, test methodically, and always document the solution for future reference.",
+    },
   },
   {
     id: 6,
@@ -188,6 +212,7 @@ const FlashcardPractice = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showTips, setShowTips] = useState(false);
+  const [showFullAnswer, setShowFullAnswer] = useState(false);
   const [studiedCards, setStudiedCards] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<string>("All");
 
@@ -212,6 +237,7 @@ const FlashcardPractice = () => {
     setStudiedCards((prev) => new Set(prev).add(currentCard.id));
     setIsFlipped(false);
     setShowTips(false);
+    setShowFullAnswer(false);
     if (currentIndex < filteredQuestions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -222,6 +248,7 @@ const FlashcardPractice = () => {
   const handlePrevious = () => {
     setIsFlipped(false);
     setShowTips(false);
+    setShowFullAnswer(false);
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     } else {
@@ -358,49 +385,153 @@ const FlashcardPractice = () => {
                 </div>
               </div>
             ) : (
-              // Back of card - Tips
+              // Back of card - Tips or Full Answer
               <div className="flex flex-col h-full rotate-y-180">
-                <div className="absolute top-6 right-6">
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                    Tips
-                  </span>
-                </div>
+                {!showFullAnswer ? (
+                  // Tips View
+                  <>
+                    <div className="absolute top-6 right-6">
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                        Tips
+                      </span>
+                    </div>
 
-                <div className="text-5xl mb-6">💡</div>
+                    <div className="text-5xl mb-6">💡</div>
 
-                <div className="space-y-4 flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">
-                    How to Answer:
-                  </h3>
-                  <p className="text-lg text-gray-700 leading-relaxed">
-                    {currentCard.tips}
-                  </p>
+                    <div className="space-y-4 flex-1">
+                      <h3 className="text-xl font-bold text-gray-800 mb-4">
+                        How to Answer:
+                      </h3>
+                      <p className="text-lg text-gray-700 leading-relaxed">
+                        {currentCard.tips}
+                      </p>
 
-                  <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                    <p className="text-sm font-semibold text-yellow-800 mb-2">
-                      🎯 STAR Method:
-                    </p>
-                    <ul className="text-sm text-yellow-900 space-y-1">
-                      <li>
-                        <strong>S</strong>ituation - Set the context
-                      </li>
-                      <li>
-                        <strong>T</strong>ask - Describe the challenge
-                      </li>
-                      <li>
-                        <strong>A</strong>ction - Explain what you did
-                      </li>
-                      <li>
-                        <strong>R</strong>esult - Share the outcome and
-                        learnings
-                      </li>
-                    </ul>
+                      <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                        <p className="text-sm font-semibold text-yellow-800 mb-2">
+                          🎯 STAR Method:
+                        </p>
+                        <ul className="text-sm text-yellow-900 space-y-1">
+                          <li>
+                            <strong>S</strong>ituation - Set the context
+                          </li>
+                          <li>
+                            <strong>T</strong>ask - Describe the challenge
+                          </li>
+                          <li>
+                            <strong>A</strong>ction - Explain what you did
+                          </li>
+                          <li>
+                            <strong>R</strong>esult - Share the outcome and
+                            learnings
+                          </li>
+                        </ul>
+                      </div>
+
+                      {currentCard.answer && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowFullAnswer(true);
+                          }}
+                          className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold w-full"
+                        >
+                          📖 View Sample Answer (STAR Format)
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="absolute bottom-6 text-gray-400 text-sm">
+                      Practice your answer out loud!
+                    </div>
+                  </>
+                ) : (
+                  // Full Answer View (STAR Format)
+                  <div className="overflow-y-auto max-h-[500px] pr-2">
+                    <div className="absolute top-6 right-6 flex gap-2">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                        Sample Answer
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowFullAnswer(false);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-700 text-sm mb-4"
+                    >
+                      ← Back to Tips
+                    </button>
+
+                    <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                      Sample STAR Answer
+                    </h3>
+
+                    {currentCard.answer && (
+                      <div className="space-y-6">
+                        {/* Situation */}
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                          <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                            <span className="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                              S
+                            </span>
+                            Situation
+                          </h4>
+                          <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                            {currentCard.answer.situation}
+                          </p>
+                        </div>
+
+                        {/* Task */}
+                        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                          <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">
+                            <span className="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                              T
+                            </span>
+                            Task
+                          </h4>
+                          <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                            {currentCard.answer.task}
+                          </p>
+                        </div>
+
+                        {/* Action */}
+                        <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
+                          <h4 className="font-bold text-purple-900 mb-2 flex items-center gap-2">
+                            <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                              A
+                            </span>
+                            Action
+                          </h4>
+                          <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                            {currentCard.answer.action}
+                          </p>
+                        </div>
+
+                        {/* Result */}
+                        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+                          <h4 className="font-bold text-yellow-900 mb-2 flex items-center gap-2">
+                            <span className="bg-yellow-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                              R
+                            </span>
+                            Result
+                          </h4>
+                          <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                            {currentCard.answer.result}
+                          </p>
+                        </div>
+
+                        <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded">
+                          <p className="text-sm text-indigo-800">
+                            💡 <strong>Pro Tip:</strong> Adapt this structure to
+                            your own experiences. Keep answers to 2-3 minutes
+                            and practice delivering them naturally!
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <div className="absolute bottom-6 text-gray-400 text-sm">
-                  Practice your answer out loud!
-                </div>
+                )}
               </div>
             )}
           </div>
