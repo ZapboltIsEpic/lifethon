@@ -153,6 +153,15 @@ const Dashboard = () => {
                 <p className="text-sm opacity-90">Earn rewards</p>
               </Link>
 
+              <Link
+                href="/flashcards"
+                className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-6 rounded-lg hover:shadow-lg transition-shadow text-center"
+              >
+                <div className="text-4xl mb-2">🎰</div>
+                <h3 className="font-bold text-lg">Flashcard Practice</h3>
+                <p className="text-sm opacity-90">Practice</p>
+              </Link>
+
               {isAdmin() && (
                 <Link
                   href="/admin/gacha"
