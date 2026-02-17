@@ -815,6 +815,44 @@
 - **A:** Studied official Next.js docs, refactored page to Server Component, extracted interactive logic to separate Client Component, reduced client bundle size
 - **R:** Cleaner architecture following framework conventions, smaller JavaScript bundle, easier to add server-side features later, learned to verify assumptions against official documentation
 
+---
+
+## Entry — 2026-02-17 | Area: infra
+
+- **Title:** WSL1 Network Monitoring Limitations & Health Check Scripts
+- **Files / Paths:** `~/lifethon-ops/system-health.sh`, `~/lifethon-ops/troubleshoot-service.sh`
+- **Stage:** Fixed
+- **Tags:** #learning #infra #monitoring #wsl
+
+### Problem / Observation 🚧
+
+- `sudo netstat -tulpn` showed empty output in WSL1 despite backend running on port 8081
+- `curl http://localhost:8081` worked fine, proving service was up
+- Discovered WSL1 shares Windows network stack - no Linux kernel networking
+
+### Action / Fix ✅
+
+- Researched Microsoft WSL docs: WSL1 uses translation layer, not real Linux kernel
+- Built connectivity-based health checks instead of socket-based monitoring
+- Created operational scripts: system-health.sh, troubleshoot-service.sh, status.sh
+- Scripts test actual HTTP endpoints with curl, check processes with ps, monitor resources
+- Use `netstat -ano` from Windows PowerShell to see actual ports
+
+### Learnings ✨
+
+- WSL1 limitation taught better practice: test connectivity > check sockets
+- Listening port ≠ healthy service - connectivity tests more meaningful
+- AWS uses same approach: ALB health checks use HTTP requests, not netstat
+- Adapted troubleshooting methodology to environment constraints
+- Real production (AWS Linux) uses standard netstat/ss since they have full kernel
+
+### STAR-ready bullets ⭐
+
+- **S:** Building monitoring for LifeThon in WSL1, netstat showed no listening ports despite services running
+- **T:** Needed reliable health checks to practice AWS operational scenarios without native Linux networking
+- **A:** Researched WSL1 architecture limitations, built connectivity-based health check scripts using curl and process checks instead of socket inspection, created troubleshooting toolkit with 4 operational scripts
+- **R:** Developed monitoring approach that works in constrained environment and follows AWS best practices (test connectivity not just ports); created reusable ops toolkit demonstrating systematic troubleshooting
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
