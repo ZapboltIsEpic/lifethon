@@ -223,6 +223,115 @@ const behavioralQuestions: BehavioralQuestion[] = [
     category: "Motivation",
     tips: "Growth, impact, learning, team culture. Align with AWS values: customer obsession, ownership.",
   },
+  {
+    id: 27,
+    question: "Tell me about a time you solved a complex problem on your team.",
+    category: "Problem Solving",
+    tips: "Focus on your systematic approach: research, stakeholder engagement, root cause analysis. Show both technical fix and process improvement.",
+    answer: {
+      situation:
+        "During my university capstone project, WaddleWait, our team of six was building a full-stack waiter management system using React, Django, and PostgreSQL. In our first sprint, we committed to delivering a working prototype with authentication and table management.\n\nOn the final day, when I tried to integrate my frontend with the backend, the application crashed completely. The API responses didn't match what my frontend expected – fields were renamed, data structures had changed, and nothing worked. We were facing a missed deadline and team tension was high.",
+      task: "I needed to not only fix the immediate integration problem but also understand why it happened and prevent it from recurring. My task was to diagnose the root cause, fix the technical issue, engage stakeholders appropriately, and propose a long-term solution that would keep the team aligned.",
+      action:
+        "I didn't just assume it was someone else's mistake. First, I used browser developer tools to inspect the actual API responses coming from the backend. I compared them to the API specification we'd verbally agreed on and documented the differences line by line. I also checked the backend codebase to understand what changes had been made and why.\n\nI called an immediate meeting with the backend developer who had made the changes. Instead of blaming, I asked open questions: 'I noticed the API responses are different now – can you walk me through what changed and why?' I also engaged our project supervisor to get advice on how we should handle API design going forward.\n\nAfter understanding the changes, I updated my frontend code to match the new API format – that got us working again in the short term. But I knew the real problem was deeper. I proposed three solutions to the team:\n1. Daily 15-minute stand-ups so everyone shares what they're working on\n2. Pair programming sessions during API design so frontend and backend align early\n3. Shared API documentation (we started using a living Google Doc) as the single source of truth",
+      result:
+        "We never missed another deadline. Our second sprint delivered on time, and integration became smooth. The team adopted these practices, and a few weeks later, teammates admitted the changes made the project less stressful.\n\nI learned that complex technical problems often have human root causes – and fixing the process is sometimes more important than fixing the code. This experience taught me to dive deep into both technical and organizational aspects when solving problems.",
+    },
+  },
+  {
+    id: 28,
+    question: "Tell me about a time you had to deal with a difficult customer.",
+    category: "Customer Obsession",
+    tips: "Show empathy and listening skills. Demonstrate how you identified the root cause of 'difficult' behavior and adapted your approach. Focus on understanding customer needs.",
+    answer: {
+      situation:
+        "During my time as a mathematics tutor at Prof Education, I worked with a Year 11 student preparing for a trigonometry test. From our first session, she was resistant – she'd sigh heavily when I explained concepts, rush through practice questions without care, and often said things like 'I'm just not good at maths.' It would have been easy to label her as difficult and just go through the motions.",
+      task: "My task was to help her prepare for the trigonometry test, but I quickly realized the deeper challenge was to understand why she was being resistant and find a way to engage her effectively. I needed to build trust and help her succeed despite her apparent lack of motivation.",
+      action:
+        "Instead of pushing harder, I paused and asked different questions. I said, 'I notice you seem really frustrated with trig – can you tell me more about that?' She opened up and explained that she'd failed a previous maths test and was convinced the same would happen again. She wasn't being difficult; she was scared of failing and didn't want to get her hopes up.\n\nI adjusted my approach completely. Instead of focusing on right and wrong answers, I focused on building understanding step by step. I created visual aids showing how trigonometry works with real triangles, used analogies she could relate to, and celebrated small wins – like when she correctly identified which ratio to use without prompting.\n\nI also gave her control. I asked, 'What part of trig feels most confusing to you? Let's start there.' By letting her guide the sessions, she became more invested.",
+      result:
+        "She passed her trigonometry test, but more importantly, her attitude transformed. She started arriving to sessions on time, asking questions proactively, and even laughing when she made mistakes instead of getting frustrated. Her parents later thanked me, saying they'd noticed how much more confident she'd become about maths.\n\nI learned that 'difficult' behavior is often a symptom of something deeper. In this case, it was fear of failure. By showing empathy, adjusting my approach, and building trust, I turned a challenging relationship into a productive one. That experience taught me that customer-centricity – whether with students or in any professional setting – starts with listening and understanding the person behind the problem.",
+    },
+  },
+  {
+    id: 28,
+    question: "What is traceroute and when have you used it?",
+    category: "Networking",
+    tips: "Explain what it does, show command syntax, give real example from your experience.",
+    answer: {
+      situation:
+        "Traceroute is a network diagnostic tool that shows the path packets take from your computer to a destination server, displaying each hop (router) along the way and the time it takes.",
+      task: "It's used to diagnose network connectivity issues, identify where packets are being dropped or delayed, and understand network topology.",
+      action:
+        "Command: `traceroute amazon.com` or `tracert amazon.com` (Windows)\n\nIt works by sending packets with incrementing TTL (Time To Live) values:\n1. First packet: TTL=1, first router responds\n2. Second packet: TTL=2, second router responds\n3. Continues until destination is reached\n\nI used it when setting up LifeThon's AWS deployment. My EC2 instance couldn't reach the RDS database. I ran `traceroute <rds-endpoint>` and noticed packets were timing out at a specific router, which led me to discover a misconfigured security group that was blocking traffic.",
+      result:
+        "Traceroute helped me identify the exact network hop where connectivity failed, narrowing down the problem from 'database unreachable' to 'security group blocking traffic at the VPC level.' This saved hours of random troubleshooting.",
+    },
+  },
+  {
+    id: 33,
+    question: "What are the fields in /etc/passwd?",
+    category: "Linux",
+    tips: "List all 7 fields in order, explain what each does. Memorize this - it's a classic interview question.",
+    answer: {
+      situation:
+        "The /etc/passwd file stores user account information on Linux systems. Each line represents one user with 7 colon-separated fields.",
+      task: "Understanding this file is essential for user management, troubleshooting login issues, and system administration.",
+      action:
+        "The 7 fields in order:\n1. **Username** - Login name (e.g., 'ubuntu', 'root')\n2. **Password** - Usually 'x' (actual password in /etc/shadow)\n3. **UID** - User ID number (0 = root, 1000+ = regular users)\n4. **GID** - Primary group ID\n5. **GECOS** - User info (full name, phone, etc.)\n6. **Home directory** - User's home folder (e.g., /home/ubuntu)\n7. **Shell** - Login shell (e.g., /bin/bash, /bin/sh)\n\nExample line:\n`ubuntu:x:1000:1000:Ubuntu User:/home/ubuntu:/bin/bash`\n\nI use this when troubleshooting: `cat /etc/passwd | grep ubuntu` to verify user configuration, check if accounts exist, or debug permission issues in LifeThon deployments.",
+      result:
+        "Understanding /etc/passwd helps quickly diagnose user-related issues like wrong shell, missing home directory, or incorrect UID/GID causing permission problems.",
+    },
+  },
+
+  {
+    id: 30,
+    question: "What's the difference between TCP and UDP?",
+    category: "Networking",
+    tips: "Know the key differences, when to use each, and give examples from your project.",
+    answer: {
+      situation:
+        "TCP (Transmission Control Protocol) and UDP (User Datagram Protocol) are two core transport layer protocols in networking.",
+      task: "Choose the right protocol based on whether you need reliability or speed.",
+      action:
+        "**TCP (Transmission Control Protocol):**\n- Connection-oriented (3-way handshake)\n- Reliable: guarantees delivery, order, error checking\n- Slower due to overhead\n- Use for: HTTP/HTTPS, email, file transfer, databases\n- Example: My LifeThon backend uses TCP for PostgreSQL connections - we need guaranteed delivery of queries\n\n**UDP (User Datagram Protocol):**\n- Connectionless (fire and forget)\n- Unreliable: no delivery guarantee, packets may arrive out of order\n- Faster, lower overhead\n- Use for: Video streaming, DNS, gaming, VoIP\n- Example: DNS lookups use UDP because speed matters more than 100% reliability\n\n**TCP/IP:**\nTCP/IP refers to the entire Internet protocol suite, not just TCP. It includes:\n- Application Layer (HTTP, FTP, SMTP)\n- Transport Layer (TCP, UDP)\n- Internet Layer (IP)\n- Link Layer (Ethernet, WiFi)",
+      result:
+        "In LifeThon, I use TCP for all API requests and database connections because data integrity is critical for authentication and gacha pulls. If I were building real-time leaderboards, I might consider UDP for lower latency.",
+    },
+  },
+
+  {
+    id: 31,
+    question:
+      "What happens when you type https://www.amazon.com into your browser?",
+    category: "Networking",
+    tips: "Walk through each step from DNS to rendering. Show breadth of knowledge across network stack.",
+    answer: {
+      situation:
+        "This question tests understanding of the full web request lifecycle from DNS to rendering.",
+      task: "Explain the complete journey of a web request through multiple layers of networking, security, and application protocols.",
+      action:
+        "**Step-by-step breakdown:**\n\n1. **DNS Lookup:**\n   - Browser checks cache (browser → OS → router → ISP)\n   - If not cached, queries DNS resolver\n   - DNS returns IP address (e.g., 205.251.242.103)\n\n2. **TCP Connection:**\n   - Browser initiates TCP 3-way handshake with server\n   - SYN → SYN-ACK → ACK\n\n3. **TLS/SSL Handshake (HTTPS):**\n   - Client Hello (supported cipher suites)\n   - Server Hello (chosen cipher, certificate)\n   - Certificate verification\n   - Key exchange, encrypted connection established\n\n4. **HTTP Request:**\n   - Browser sends: `GET / HTTP/1.1\\nHost: www.amazon.com`\n   - Includes headers (cookies, user-agent, etc.)\n\n5. **Server Processing:**\n   - Request hits load balancer\n   - Routes to application server\n   - Server processes request, queries database\n   - Generates HTML response\n\n6. **HTTP Response:**\n   - Server sends HTML, CSS, JavaScript\n   - Status code (200 OK)\n\n7. **Rendering:**\n   - Browser parses HTML, builds DOM\n   - Fetches additional resources (images, CSS, JS)\n   - Executes JavaScript\n   - Renders page\n\nIn my LifeThon project, I see this same flow: DNS → Load Balancer → EC2 Backend → RDS Database → Response → React Frontend rendering.",
+      result:
+        "Understanding this flow helps debug issues at every layer: DNS problems, SSL certificate errors, slow queries, rendering issues. When LifeThon's frontend couldn't reach the backend, I traced through this flow to find the security group was blocking HTTPS traffic.",
+    },
+  },
+
+  {
+    id: 32,
+    question: "How do you check background processes on Linux?",
+    category: "Linux",
+    tips: "Give multiple commands with examples. Show you know ps, top, jobs, and when to use each.",
+    answer: {
+      situation:
+        "Linux provides several tools to monitor and manage background processes.",
+      task: "Know which tool to use for different scenarios: one-time check, real-time monitoring, or job control.",
+      action:
+        "**Primary Commands:**\n\n1. **ps aux** - Snapshot of all processes\n   ```bash\n   ps aux | grep java  # Find specific process\n   ps aux --sort=-%cpu | head  # Top CPU users\n   ```\n\n2. **top / htop** - Real-time interactive monitoring\n   ```bash\n   top -u ubuntu  # Filter by user\n   htop  # Better UI, easier to use\n   ```\n\n3. **jobs** - Current shell's background jobs\n   ```bash\n   jobs  # List background jobs\n   fg %1  # Bring job 1 to foreground\n   bg %1  # Resume job 1 in background\n   ```\n\n4. **pgrep / pidof** - Find process IDs\n   ```bash\n   pgrep java  # Get PID of java processes\n   pidof postgres  # Get PID of postgres\n   ```\n\n5. **systemctl** - For services\n   ```bash\n   systemctl status postgresql\n   systemctl list-units --type=service\n   ```\n\n**Real example from LifeThon:**\nWhen my backend was using too much memory, I ran:\n```bash\nps aux --sort=-%mem | head -10\n```\nFound the Java process, checked details with `top -p <PID>`, discovered a memory leak in the gacha pull logic.",
+      result:
+        "Knowing which command to use saves time: ps for quick checks, top for real-time monitoring, jobs for shell management, systemctl for services.",
+    },
+  },
 ];
 
 const FlashcardPractice = () => {
