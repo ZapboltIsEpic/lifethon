@@ -1,4 +1,3 @@
-cat > ~/lifethon-ops/monitoring/check-endpoints.py << 'EOF'
 #!/usr/bin/env python3
 """
 LifeThon API Endpoint Health Checker
@@ -101,6 +100,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
-chmod +x ~/lifethon-ops/monitoring/check-endpoints.py

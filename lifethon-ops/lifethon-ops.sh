@@ -1,7 +1,8 @@
-cat > ~/lifethon-ops/lifethon-ops.sh << 'EOF'
 #!/bin/bash
 # LifeThon Operations Master Control
-# Quick access to all operational tools
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_menu() {
     clear
@@ -33,28 +34,28 @@ while true; do
     case $choice in
         1)
             echo ""
-            ~/lifethon-ops/monitoring/monitor-all.sh
+            "$SCRIPT_DIR/monitoring/monitor-all.sh"
             ;;
         2)
             echo ""
-            python3 ~/lifethon-ops/monitoring/check-endpoints.py
+            python3 "$SCRIPT_DIR/monitoring/check-endpoints.py"
             ;;
         3)
             echo ""
-            ~/lifethon-ops/troubleshooting/diagnose-backend.sh
+            "$SCRIPT_DIR/troubleshooting/diagnose-backend.sh"
             ;;
         4)
             echo ""
-            python3 ~/lifethon-ops/troubleshooting/network-debug.py
+            python3 "$SCRIPT_DIR/troubleshooting/network-debug.py"
             ;;
         5)
             echo ""
-            ~/lifethon-ops/backup/backup-database.sh
+            "$SCRIPT_DIR/deployment/backup-database.sh"
             ;;
         6)
             echo ""
             echo "Recent backend logs:"
-            tail -50 ~/LifeThon/backend/logs/spring-boot-logger.log 2>/dev/null || echo "Log file not found"
+            tail -50 ../backend/logs/spring-boot-logger.log 2>/dev/null || echo "Log file not found"
             ;;
         0)
             echo "Exiting..."
@@ -69,6 +70,3 @@ while true; do
     echo "Press Enter to continue..."
     read -r
 done
-EOF
-
-chmod +x ~/lifethon-ops/lifethon-ops.sh

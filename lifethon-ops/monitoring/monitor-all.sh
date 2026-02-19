@@ -1,4 +1,3 @@
-cat > ~/lifethon-ops/monitoring/monitor-all.sh << 'EOF'
 #!/bin/bash
 # LifeThon - Complete system monitoring
 # Demonstrates: ps, resource monitoring, process management
@@ -102,6 +101,3 @@ fi
 
 echo ""
 echo "Last checked: $(date '+%Y-%m-%d %H:%M:%S')"
-EOF
-
-chmod +x ~/lifethon-ops/monitoring/monitor-all.sh

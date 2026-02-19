@@ -1,4 +1,3 @@
-cat > ~/lifethon-ops/troubleshooting/network-debug.py << 'EOF'
 #!/usr/bin/env python3
 """
 LifeThon Network Debugging Tool
@@ -153,6 +152,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
-chmod +x ~/lifethon-ops/troubleshooting/network-debug.py

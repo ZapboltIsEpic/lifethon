@@ -1,4 +1,3 @@
-cat > ~/lifethon-ops/troubleshooting/diagnose-backend.sh << 'EOF'
 #!/bin/bash
 # LifeThon Backend Diagnostics
 # Demonstrates: DNS, TCP/IP, process debugging, log analysis
@@ -137,6 +136,3 @@ echo ""
 echo "═══════════════════════════════════════════════"
 echo "Diagnosis complete!"
 echo "═══════════════════════════════════════════════"
-EOF
-
-chmod +x ~/lifethon-ops/troubleshooting/diagnose-backend.sh

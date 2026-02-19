@@ -1,4 +1,3 @@
-cat > ~/lifethon-ops/backup/backup-database.sh << 'EOF'
 #!/bin/bash
 # LifeThon Database Backup Script
 # Demonstrates: PostgreSQL operations, file management, error handling
@@ -48,6 +47,3 @@ fi
 
 echo ""
 echo "=== Backup Complete ==="
-EOF
-
-chmod +x ~/lifethon-ops/backup/backup-database.sh
