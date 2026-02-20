@@ -853,6 +853,91 @@
 - **A:** Researched WSL1 architecture limitations, built connectivity-based health check scripts using curl and process checks instead of socket inspection, created troubleshooting toolkit with 4 operational scripts
 - **R:** Developed monitoring approach that works in constrained environment and follows AWS best practices (test connectivity not just ports); created reusable ops toolkit demonstrating systematic troubleshooting
 
+---
+
+## Entry — 2026-02-20 | Area: infra
+
+- **Title:** Linux File Operations & Navigation Practice
+- **Files / Paths:** `/home/user/`, `/mnt/c/Users/User/Desktop/playground/`
+- **Stage:** Fixed
+- **Tags:** #learning #linux #commands #interview-prep
+
+### Problem / Observation 🚧
+
+- Needed hands-on practice with core Linux commands for AWS interview
+- Covered: file creation/deletion, copying, moving, hard/soft links, directory navigation
+- Practiced in WSL1 environment using playground directory for safe experimentation
+
+### Action / Fix ✅
+
+**Directory Operations:**
+
+- `mkdir dir1 dir2` - Create multiple directories
+- `mkdir -p path/to/nested/dir` - Create nested directories
+- `rmdir` / `rm -r` - Remove empty/non-empty directories
+
+**File Operations:**
+
+- `cp /etc/passwd .` - Copy file to current directory
+- `cp -v` - Verbose (shows what's copied)
+- `cp -i` - Interactive (prompts before overwrite)
+- `cp -r` - Recursive (for directories)
+- `mv file1 file2` - Rename file
+- `mv file dir/` - Move file to directory
+- `mv -i` - Interactive move with prompt
+- `rm -i` - Interactive delete with confirmation
+
+**Links (Advanced):**
+
+- `ln file hardlink` - Create hard link (same inode, reference count increases)
+- `ln -s target symlink` - Create symbolic link (different inode, points to path)
+- Verified with `ls -li` - shows inode numbers and link counts
+- Hard links: 4 references to same file (same inode: 77687093572246986)
+- Soft links: separate inode, shows as `lrwxrwxrwx` with `->` pointer
+- Deleting original breaks symlinks but hard links remain valid
+
+**Navigation:**
+
+- `cd ~` - Home directory
+- `cd ../` - Parent directory
+- `cd /` - Root directory
+- `cd -` - Previous directory
+- Tab completion for paths
+
+### Learnings ✨
+
+**Hard Links vs Soft Links:**
+
+- Hard link: Direct reference to inode, survives original deletion, same filesystem only
+- Soft link: Pointer to path, breaks if target deleted, works across filesystems
+- Link count in `ls -l` shows number of hard links (4 in example)
+- Symbolic links show as `l` in permissions and display target with `->`
+
+**Best Practices:**
+
+- Always use `-i` flag for destructive operations (cp, mv, rm) to prevent accidents
+- Use `-v` for verbose output when debugging or learning
+- Check with `ls -li` to verify inodes and understand link relationships
+- Practice in safe playground directory before applying to production
+
+**Interview-Ready Explanation:**
+_"Hard links create multiple directory entries pointing to the same inode - they're essentially different names for the same file. The file isn't deleted until all hard links are removed. Soft links are separate files that store a path to the target - like shortcuts. If the original is deleted, the symlink breaks."_
+
+**Key Commands for Interview:**
+
+- `ls -li` - List with inodes to understand links
+- `cp -r` - Recursive copy for directories
+- `mv` - Both rename and move (same command)
+- `rm -rf` - Force remove (dangerous, use carefully)
+- Tab completion - speeds up navigation significantly
+
+### STAR-ready bullets ⭐
+
+- **S:** Preparing for AWS Systems Engineer interview, needed practical experience with Linux file operations beyond just knowing commands theoretically
+- **T:** Practice essential file management commands hands-on, understand differences between hard/soft links, build muscle memory for navigation and safe file operations
+- **A:** Created playground environment for safe experimentation, practiced mkdir/cp/mv/rm with various flags (-i, -v, -r), created and tested hard/soft links with ln, verified behavior with ls -li, learned tab completion for efficiency
+- **R:** Gained hands-on experience with 15+ essential Linux commands, understand inode concept and link differences, can explain hard vs soft links clearly, built safe habits (using -i flag), ready to demonstrate these operations in technical interview
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
