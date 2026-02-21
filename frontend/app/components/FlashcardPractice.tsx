@@ -332,6 +332,55 @@ const behavioralQuestions: BehavioralQuestion[] = [
         "Knowing which command to use saves time: ps for quick checks, top for real-time monitoring, jobs for shell management, systemctl for services.",
     },
   },
+  {
+    id: 33,
+    question:
+      "Tell me about a time you made a short-term sacrifice for long-term gain.",
+    category: "Ownership",
+    tips: "Show you think strategically, not just tactically. Explain the trade-off clearly and quantify the long-term benefit.",
+    answer: {
+      situation:
+        "During my university capstone project, WaddleWait, our team of six was building a full-stack waiter management system using React, Django, and PostgreSQL. In our first sprint, we missed the deadline badly. The backend team had changed API endpoints without communicating with me on frontend, and on integration day, everything crashed. During the retrospective, there was tension and blame.\n\nI had a choice: focus solely on my own frontend work and hit my individual targets, or invest time in fixing the underlying team communication problems.",
+      task: "The long-term goal was a successful project and a team that worked well together. But achieving that would require short-term effort that wasn't strictly 'my job' - I'd need to sacrifice my own coding velocity to build team processes.",
+      action:
+        "I made a conscious sacrifice of my own coding time to invest in team processes:\n\n1. Facilitated honest retrospective - Acknowledged my part first: 'I could have asked for updates more frequently.' This lowered tension and opened real conversation.\n\n2. Proposed and implemented new processes - Advocated for daily 15-minute stand-ups, pair programming sessions during API design, and shared API documentation. This took significant time to set up and coordinate, especially when teammates were initially resistant.\n\n3. Created first documentation template - Spent an evening building a Google Doc structure for API endpoints with examples and expected responses. Time I could have spent on frontend features.\n\n4. Facilitated first week of stand-ups - Showed up early, kept meetings focused, modeled how to share updates effectively. Extra effort on top of regular workload.\n\nThe short-term sacrifice: For about two weeks, I made less progress on my individual frontend tasks because I was investing time in team coordination, documentation, and process building. I fell slightly behind my personal timeline.",
+      result:
+        "The investment paid off immediately and continuously:\n\n- Never missed another deadline - second sprint delivered on time, and every sprint after\n- Integration became smooth - frontend and backend aligned before code was written\n- Team morale improved significantly - people felt heard and respected\n- Teammates who initially pushed back later admitted the new processes made the project less stressful and more enjoyable\n- Delivered a working product that actual restaurant staff found useful\n\nWhat I learned: Sometimes the best contribution isn't writing more code - it's fixing the systems that enable everyone to write better code. The short-term hit to my individual productivity was absolutely worth it for the team's long-term success. I'll carry this lesson into any role: invest in processes early, even when it's not the obvious choice, because it pays dividends.",
+    },
+  },
+
+  {
+    id: 34,
+    question: "Tell me about a time you made a mistake.",
+    category: "Learning & Growth",
+    tips: "Own the mistake fully, explain what you learned, and show how you've changed your approach since.",
+    answer: {
+      situation:
+        "Early in my LifeThon project, I was setting up the Spring Boot backend with PostgreSQL. I'd done this before in university, so I felt confident. I configured my application.properties with the standard JDBC URL: jdbc:postgresql://localhost:5432/LifeThon. When I ran the application, I got a 'connection refused' error.",
+      task: "I needed to resolve the connectivity issue to continue development. But more importantly, I needed to learn from this mistake so I wouldn't repeat it - not just fix this one instance, but change my troubleshooting approach permanently.",
+      action:
+        "The mistake: I assumed the problem was with my code or the PostgreSQL service itself, not my configuration. I spent hours checking:\n- Is PostgreSQL installed correctly? (Yes)\n- Is the service running? (Yes - systemctl status postgresql showed active)\n- Are my credentials correct? (Yes - I could connect via psql)\n- Is there a firewall blocking it? (No)\n\nI was so convinced the problem was somewhere else that I never questioned my core assumption: that PostgreSQL was actually running on port 5432. I'd installed it months ago and never verified the port. I just assumed it was default.\n\nAfter hours of frustration, I finally stepped back and questioned my assumptions:\n1. Ran netstat -ano | findstr :5432 - nothing listening\n2. Ran netstat -ano | findstr :8080 - something was listening\n3. Checked postgresql.conf - sure enough, port = 8080\n\nThe database had been configured to port 8080 during installation to avoid conflicts. I'd never checked.\n\nI updated application.properties to jdbc:postgresql://localhost:8080/LifeThon and it worked immediately.\n\nBut I didn't stop there:\n- Documented the actual port in my project diary\n- Added to troubleshooting checklist: 'Always verify actual configuration - don't assume defaults'\n- Shared with peers working on similar projects to help them avoid the same mistake",
+      result:
+        "Immediate problem solved within minutes once I questioned my assumption. But the bigger outcome was a permanent change in how I approach troubleshooting.\n\nNow, whenever I encounter a connection error, my first questions are: 'What are the actual ports? What's the actual configuration? What am I assuming that might be wrong?'\n\nWhat I learned: Experience can sometimes work against you - you start assuming things are 'obvious' or 'default'. The most valuable troubleshooting skill isn't knowing all the answers - it's knowing how to question your own assumptions systematically. This became my diagnostic script approach: verify everything, assume nothing.\n\nI've applied this lesson to every technical challenge since: JWT implementation, OAuth integration, AWS deployment. The PostgreSQL mistake was costly in time, but invaluable in teaching me systematic investigation over assumption-based debugging.",
+    },
+  },
+
+  {
+    id: 35,
+    question:
+      "Tell me about a time you disagreed with someone and how you resolved it.",
+    category: "Conflict Resolution",
+    tips: "Show you can disagree professionally, listen to others, and focus on solutions rather than winning arguments.",
+    answer: {
+      situation:
+        "During my university capstone project, I was part of a six-person team building WaddleWait - a full-stack waiter management system using React, Django, and PostgreSQL. In our first sprint, we missed the deadline badly. I was responsible for the frontend and hadn't completed all my tasks. During the retrospective, one teammate placed the blame entirely on me.",
+      task: "I knew I had some responsibility - I could have been more proactive. But I also believed the real problem was deeper than one person's performance. My task was to acknowledge my part while helping the team see that our processes were broken. I needed to resolve the conflict without getting defensive and prevent it from happening again.",
+      action:
+        "First, I owned my mistake openly: 'You're right - I didn't complete everything. I'll take responsibility for that.' That immediately lowered the tension and showed I wasn't trying to dodge accountability.\n\nThen I explained my perspective calmly: 'But part of why I was blocked was that I was waiting on APIs that weren't ready, and when they arrived, the inconsistent naming conventions (mixing snake_case and camelCase) made integration confusing. This isn't about blame - it's about a system that failed us.'\n\nInstead of just pointing out problems, I proposed solutions:\n1. Daily 15-minute standups so everyone shares progress and blockers\n2. Shared API documentation with consistent camelCase naming\n3. Using mock data so frontend could build without waiting for complete backend\n\nI also admitted what I could have done differently: 'I should have built around the delay with mock data instead of waiting passively. That's on me, and I'll handle blocking dependencies better next time.'",
+      result:
+        "The team agreed to try my suggestions. The standups immediately improved visibility - we caught issues early before they became blockers. The API docs eliminated naming confusion and integration bugs. By owning my part first, I built trust with the teammate who had blamed me. She later thanked me for handling it constructively instead of getting defensive.\n\nWe never missed another deadline. Team morale improved significantly because communication was clearer and everyone felt heard. The conflict became a turning point that made us a stronger team.\n\nWhat I learned: Resolving conflict isn't about being right or winning the argument - it's about listening, owning your part first, and focusing on solutions that help everyone. Taking accountability disarms defensiveness and creates space for productive conversation. This approach has served me in every team situation since.",
+    },
+  },
 ];
 
 const FlashcardPractice = () => {
