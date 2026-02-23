@@ -1,0 +1,586 @@
+openapi: 3.0.3
+info:
+  title: Lifethon API
+  description: |-
+    REST API for the Lifethon application, built with Spring Boot 4.0 and Java 21.
+    
+    ## Authentication
+    After login or registration, you receive a JWT access token and refresh token.
+    Pass the access token in the `Authorization` header as a Bearer token:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+    - **Access token** expires in 24 hours
+    - **Refresh token** expires in 7 days
+  version: 1.0.0
+  contact:
+    name: Lifethon Team
+
+servers:
+  - url: http://localhost:8081
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Authentication — login, register, token management, OAuth
+  - name: Users
+    description: User CRUD operations
+
+# ─────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────
+paths:
+
+  # ── AUTH ──────────────────────────────────
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      description: Authenticates a user and returns JWT access and refresh tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: user@example.com
+              password: mypassword
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Missing or empty email/password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Email is required
+        '401':
+          description: Invalid credentials or inactive account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid email or password
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user account
+      description: |-
+        Creates a new user. The password is BCrypt-hashed before storage.
+        Returns JWT tokens immediately — no separate login step needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: newuser@example.com
+              password: securePass1
+              firstName: Jane
+              lastName: Doe
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation failure or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailExists:
+                  summary: Email taken
+                  value:
+                    error: Email already exists
+                passwordTooShort:
+                  summary: Weak password
+                  value:
+                    error: Password must be at least 6 characters long
+
+  /api/auth/verify:
+    post:
+      tags: [Auth]
+      summary: Verify a JWT access token
+      description: Validates that a token is well-formed, signed correctly, and not expired. Useful for frontend auth guards.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Token is valid
+        '401':
+          description: Missing, malformed, or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid authorization header
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Exchanges a valid refresh token for a new access token + refresh token pair.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid refresh token
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current user
+      description: |-
+        Logs out the user. Currently relies on client-side token deletion.
+        Server-side token blacklisting (Redis) is planned for a future release.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Logged out successfully
+        '401':
+          description: Invalid or missing Authorization header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected logout failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/google:
+    post:
+      tags: [Auth]
+      summary: Login or register via Google OAuth
+      description: |-
+        Authenticates using a Google ID Token obtained from the Google Identity SDK on the client.
+        
+        **Flow:**
+        1. If the email matches an existing account → logs in that user
+        2. If no account exists → creates one with a random hashed password, then logs in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+            example:
+              idToken: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+      responses:
+        '200':
+          description: Google login or registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                existingUser:
+                  summary: Existing user logged in
+                  value:
+                    message: Google login successful
+                    token: <jwt_access_token>
+                    refreshToken: <jwt_refresh_token>
+                    userId: 1
+                    email: user@gmail.com
+                newUser:
+                  summary: New account created
+                  value:
+                    message: Google account created and logged in
+                    token: <jwt_access_token>
+                    refreshToken: <jwt_refresh_token>
+                    userId: 42
+                    email: newuser@gmail.com
+        '401':
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid Google token
+        '500':
+          description: Token verification or account creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Google login failed
+
+  /api/auth/facebook:
+    post:
+      tags: [Auth]
+      summary: Login via Facebook OAuth (not yet implemented)
+      description: |-
+        Facebook OAuth placeholder. Returns a dummy token.
+        Full implementation is planned for a future release.
+      responses:
+        '200':
+          description: Placeholder response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleAuthResponse'
+              example:
+                message: Facebook login successful
+                token: facebook-dummy-token
+
+  # ── USERS ─────────────────────────────────
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: Get all users
+      description: Returns a list of every user in the system.
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+    post:
+      tags: [Users]
+      summary: Create a user (direct DB insert)
+      description: |-
+        Creates a user record directly. 
+        
+        ⚠️ **Note:** This endpoint does **not** BCrypt-hash the password automatically. 
+        For standard user registration (with hashing and JWT), use `POST /api/auth/register` instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              email: direct@example.com
+              password: $2a$10$hashedpassword...
+              firstName: John
+              lastName: Smith
+              isActive: true
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Email already exists or validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Users]
+      summary: Update a user
+      description: Updates the email, first name, and last name of an existing user.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            example:
+              email: updated@example.com
+              firstName: Jane
+              lastName: Smith
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: User deleted successfully (no body)
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/auth/login or /api/auth/register
+
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Numeric ID of the user
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+  schemas:
+
+    # ── Requests ──────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Registered email address
+          example: user@example.com
+        password:
+          type: string
+          description: Plain-text password
+          example: mypassword
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: newuser@example.com
+        password:
+          type: string
+          minLength: 6
+          description: Minimum 6 characters. Will be BCrypt-hashed on the server.
+          example: securePass1
+        firstName:
+          type: string
+          maxLength: 50
+          example: Jane
+        lastName:
+          type: string
+          maxLength: 50
+          example: Doe
+
+    GoogleLoginRequest:
+      type: object
+      required: [idToken]
+      properties:
+        idToken:
+          type: string
+          description: Google ID Token from the Google Identity SDK (client-side)
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+
+    CreateUserRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        password:
+          type: string
+          description: Should be pre-hashed if using this endpoint directly
+        firstName:
+          type: string
+          maxLength: 50
+        lastName:
+          type: string
+          maxLength: 50
+        isActive:
+          type: boolean
+          default: true
+
+    UpdateUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          maxLength: 50
+        lastName:
+          type: string
+          maxLength: 50
+
+    # ── Responses ─────────────────────────────
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable status message
+          example: Login successful
+        token:
+          type: string
+          description: JWT access token (expires in 24 hours)
+          example: eyJhbGciOiJIUzI1NiJ9...
+        refreshToken:
+          type: string
+          description: JWT refresh token (expires in 7 days)
+          example: eyJhbGciOiJIUzI1NiJ9...
+        userId:
+          type: integer
+          format: int64
+          description: The authenticated user's database ID
+          example: 1
+        email:
+          type: string
+          format: email
+          example: user@example.com
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 1
+        email:
+          type: string
+          format: email
+          maxLength: 100
+          example: user@example.com
+        password:
+          type: string
+          description: BCrypt hash — never returned in auth responses
+          example: $2a$10$...
+        firstName:
+          type: string
+          maxLength: 50
+          nullable: true
+          example: Jane
+        lastName:
+          type: string
+          maxLength: 50
+          nullable: true
+          example: Doe
+        isActive:
+          type: boolean
+          default: true
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-15T10:30:00"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Description of what went wrong
+          example: Invalid email or password
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Token is valid
+
+    SimpleAuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Facebook login successful
+        token:
+          type: string
+          example: facebook-dummy-token
