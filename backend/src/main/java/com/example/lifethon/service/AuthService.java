@@ -1,6 +1,7 @@
 package com.example.lifethon.service;
 
 import com.example.lifethon.entity.User;
+import com.example.lifethon.entity.User.Role;
 import com.example.lifethon.repository.UserRepository;
 import com.example.lifethon.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,8 @@ public class AuthService {
             token,
             refreshToken,
             user.getId(),
-            user.getEmail()
+            user.getEmail(),
+            user.getRole()
         );
     }
 
@@ -94,6 +96,7 @@ public class AuthService {
         newUser.setFirstName(firstName);
         newUser.setLastName(lastName);
         newUser.setIsActive(true);
+        newUser.setRole(Role.USER);
 
         // Save to database
         User savedUser = userRepository.save(newUser);
@@ -107,7 +110,8 @@ public class AuthService {
             token,
             refreshToken,
             savedUser.getId(),
-            savedUser.getEmail()
+            savedUser.getEmail(),
+            savedUser.getRole()
         );
     }
 
@@ -130,7 +134,8 @@ public class AuthService {
                         newToken,
                         newRefreshToken,
                         user.getId(),
-                        user.getEmail()
+                        user.getEmail(),
+                        user.getRole()
                     );
                 }
             }
@@ -175,7 +180,8 @@ public class AuthService {
                 token,
                 refreshToken,
                 user.getId(),
-                user.getEmail()
+                user.getEmail(),
+                user.getRole()
             );
         } else {
             // User doesn't exist - create new account
@@ -200,7 +206,8 @@ public class AuthService {
                 token,
                 refreshToken,
                 savedUser.getId(),
-                savedUser.getEmail()
+                savedUser.getEmail(),
+                savedUser.getRole()
             );
         }
     }
@@ -217,13 +224,15 @@ public class AuthService {
         private String refreshToken;
         private Long userId;
         private String email;
+        private Role role;
 
-        public AuthResponse(String message, String token, String refreshToken, Long userId, String email) {
+        public AuthResponse(String message, String token, String refreshToken, Long userId, String email, Role role) {
             this.message = message;
             this.token = token;
             this.refreshToken = refreshToken;
             this.userId = userId;
             this.email = email;
+            this.role = role;
         }
 
         // Getters and Setters
@@ -241,5 +250,8 @@ public class AuthService {
         
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+
+        public Role getRole() { return role; }
+        public void setRole(Role role) { this.role = role; }
     }
 }

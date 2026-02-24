@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("token", userData.token);
     localStorage.setItem("userId", userData.userId);
     localStorage.setItem("email", userData.email);
+    localStorage.setItem("role", userData.role);
     setUser(userData);
     router.push("/dashboard");
   };
