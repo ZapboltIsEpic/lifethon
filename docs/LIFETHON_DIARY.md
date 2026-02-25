@@ -975,6 +975,40 @@ T: Document the full REST API, improve UI polish, and build the inventory featur
 A: Wrote OpenAPI YAML spec, integrated Swagger UI into Spring Boot, rebuilt NavBar with branding, and built a filtered inventory page wired to the live DTO
 R: Full API now browsable and testable via Swagger UI; inventory page supports filtering by rarity/type and all item actions (equip, discard, use)
 
+---
+
+# Entry — 2025-02-25 | Area: frontend + backend
+
+Title: Tasks system — full stack implementation
+Files / Paths: frontend/app/tasks/page.tsx, backend/src/entity/Task.java, backend/src/entity/UserTask.java, backend/src/repository/TaskRepository.java, backend/src/repository/UserTaskRepository.java, backend/src/service/TaskService.java, backend/src/controller/TaskController.java
+Stage: WIP (reward integration pending)
+Tags: #feature #backend #frontend
+
+# Problem / Observation 🚧
+
+No task system existed — users had no way to earn coins/pulls through gameplay loops
+Needed to support daily, weekly, and user-created custom tasks with different reward tiers
+
+# Action / Fix ✅
+
+Created Task + UserTask entities with full JPA mappings
+Built service logic for completion guards (blocks re-completing daily/weekly in same period)
+Auto-reward scaling by difficulty: Easy=10💰, Medium=25💰, Hard=50💰+1 pull
+Frontend: task list with filters, progress bar, create modal, reward toast
+TODO: hook completeTask() into CoinService and gacha pull service to credit rewards
+
+# Learnings ✨
+
+Daily/weekly reset logic needs a "completed since start of period" query — not just a status flag
+Soft-delete (isActive = false) preferred over hard delete to preserve completion history
+
+# STAR-ready bullets ⭐
+
+S: No progression loop existed — users couldn't earn rewards through gameplay
+T: Build a full task system supporting daily, weekly, and custom tasks with coin/pull rewards
+A: Designed and implemented 7 files across the full stack; built completion guards, auto-reward tiers, and a filtered task UI with create/complete/delete flows
+R: Task system live end-to-end; reward crediting pending CoinService integration
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
