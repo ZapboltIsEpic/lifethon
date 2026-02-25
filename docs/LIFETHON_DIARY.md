@@ -938,6 +938,43 @@ _"Hard links create multiple directory entries pointing to the same inode - they
 - **A:** Created playground environment for safe experimentation, practiced mkdir/cp/mv/rm with various flags (-i, -v, -r), created and tested hard/soft links with ln, verified behavior with ls -li, learned tab completion for efficiency
 - **R:** Gained hands-on experience with 15+ essential Linux commands, understand inode concept and link differences, can explain hard vs soft links clearly, built safe habits (using -i flag), ready to demonstrate these operations in technical interview
 
+---
+
+# Entry — 2025-02-24 | Area: frontend + backend + docs
+
+Title: API docs, Swagger setup, NavBar polish, Inventory page
+Files / Paths: frontend/app/inventory/page.tsx, frontend/components/NavBar.tsx, backend/pom.xml, lifethon-api.yaml
+Stage: Fixed
+Tags: #docs #ui #feature #debug
+
+# Problem / Observation 🚧
+
+No API documentation existed — hard to test endpoints or onboard
+NavBar was plain MUI default with no branding
+Google login redirect used window.location.href causing page reload before error could be inspected
+Inventory page didn't exist; DTO structure was flat but component assumed nested gachaItem.\*
+
+# Action / Fix ✅
+
+Generated OpenAPI 3.0 YAML (lifethon-api.yaml) covering all /api/auth and /api/users endpoints with request/response schemas
+Added springdoc-openapi-starter-webmvc-ui to pom.xml → Swagger UI live at /swagger-ui.html
+Improved NavBar: added DirectionsRunIcon, two-tone logo, gradient background, outlined Sign Up button, removed MUI all-caps
+Replaced window.location.href with router.push() to preserve console logs; added error logging on non-OK responses
+Built InventoryPage.tsx matching flat InventoryItemDTO fields — search/rarity/type filters, equip/unequip/discard actions, item detail modal, consumable "Use" button
+
+# Learnings ✨
+
+window.location.href causes full reload — always use router.push() in Next.js for client nav
+Springdoc auto-generates OpenAPI from controllers but can also serve a hand-written YAML via springdoc.swagger-ui.url
+DTO shape must be confirmed before building UI — flat vs nested changes every field reference
+
+# STAR-ready bullets ⭐
+
+S: Project lacked API docs and key frontend pages (inventory), making development and testing slow
+T: Document the full REST API, improve UI polish, and build the inventory feature end-to-end
+A: Wrote OpenAPI YAML spec, integrated Swagger UI into Spring Boot, rebuilt NavBar with branding, and built a filtered inventory page wired to the live DTO
+R: Full API now browsable and testable via Swagger UI; inventory page supports filtering by rarity/type and all item actions (equip, discard, use)
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
