@@ -17,6 +17,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final UserTaskRepository userTaskRepository;
     private final UserRepository userRepository;
+    private final CoinService coinService;
 
     // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -114,10 +115,13 @@ public class TaskService {
         userTask.setCompletedAt(LocalDateTime.now());
         userTaskRepository.save(userTask);
 
-        // TODO: integrate with CoinService to credit rewards
-        // coinService.addCoins(userId, task.getCoinReward());
-        // TODO: integrate with GachaService to credit pull tickets
-        // gachaService.addPulls(userId, task.getGachaPullReward());
+        // Credit coin reward
+        coinService.awardTaskCompletion(userId, task.getCoinReward());
+
+        // Credit gacha pull tickets as coins (100 coins = 1 pull)
+        if (task.getGachaPullReward() != null && task.getGachaPullReward() > 0) {
+            coinService.addCoins(userId, task.getGachaPullReward() * 100, "Gacha pull reward from task");
+        }
 
         return new CompleteTaskResult(
             task.getTitle(),
