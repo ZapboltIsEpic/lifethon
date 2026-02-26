@@ -26,6 +26,9 @@ public interface UserTaskRepository extends JpaRepository<UserTask, Long> {
         @Param("since") LocalDateTime since
     );
 
+    @Query("SELECT ut FROM UserTask ut WHERE ut.user.id = :userId AND ut.completedAt >= :since AND ut.status = 'COMPLETED'")
+    List<UserTask> findCompletedByUserSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
     /** All user tasks filtered by status */
     List<UserTask> findByUserIdAndStatus(Long userId, UserTask.Status status);
 }

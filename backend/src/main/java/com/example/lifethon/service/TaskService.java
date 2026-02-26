@@ -64,7 +64,7 @@ public class TaskService {
         switch (task.getDifficulty()) {
             case EASY   -> { task.setCoinReward(10);  task.setGachaPullReward(0); }
             case MEDIUM -> { task.setCoinReward(25);  task.setGachaPullReward(0); }
-            case HARD   -> { task.setCoinReward(50);  task.setGachaPullReward(1); }
+            case HARD   -> { task.setCoinReward(50);  task.setGachaPullReward(0); }
         }
 
         Task saved = taskRepository.save(task);
@@ -80,6 +80,8 @@ public class TaskService {
     }
 
     // ── Complete ───────────────────────────────────────────────────────────────
+
+    private static final int DAILY_COIN_CAP = 100;
 
     @Transactional
     public CompleteTaskResult completeTask(Long userId, Long taskId) {
@@ -116,7 +118,13 @@ public class TaskService {
         userTaskRepository.save(userTask);
 
         // Credit coin reward
-        coinService.awardTaskCompletion(userId, task.getCoinReward());
+        int alreadyEarned = getCoinsEarnedToday(userId);
+        int remainingCap  = Math.max(0, DAILY_COIN_CAP - alreadyEarned);
+        int coinsToCredit = Math.min(task.getCoinReward(), remainingCap);
+
+        if (coinsToCredit > 0) {
+            coinService.awardTaskCompletion(userId, coinsToCredit);
+        }
 
         // Credit gacha pull tickets as coins (100 coins = 1 pull)
         if (task.getGachaPullReward() != null && task.getGachaPullReward() > 0) {
@@ -125,7 +133,7 @@ public class TaskService {
 
         return new CompleteTaskResult(
             task.getTitle(),
-            task.getCoinReward(),
+            coinsToCredit,
             task.getGachaPullReward()
         );
     }
@@ -143,6 +151,15 @@ public class TaskService {
 
         task.setIsActive(false);
         taskRepository.save(task);
+    }
+
+
+    private int getCoinsEarnedToday(Long userId) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        return userTaskRepository.findCompletedByUserSince(userId, startOfDay)
+            .stream()
+            .mapToInt(ut -> ut.getTask().getCoinReward())
+            .sum();
     }
 
     // ── DTO conversion ─────────────────────────────────────────────────────────
