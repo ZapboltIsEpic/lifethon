@@ -1009,6 +1009,40 @@ T: Build a full task system supporting daily, weekly, and custom tasks with coin
 A: Designed and implemented 7 files across the full stack; built completion guards, auto-reward tiers, and a filtered task UI with create/complete/delete flows
 R: Task system live end-to-end; reward crediting pending CoinService integration
 
+---
+
+## Entry — 2026-02-26 | Area: backend
+
+- **Title:** Task reward integration + daily coin cap
+- **Files / Paths:** `backend/src/main/java/com/example/lifethon/service/TaskService.java`, `backend/src/main/java/com/example/lifethon/repository/UserTaskRepository.java`
+- **Stage:** Fixed
+- **Tags:** #feature #economy #bug
+
+### Problem / Observation 🚧
+
+- Completing tasks had no effect — `CoinService` and `GachaService` were stubbed out with TODOs
+- No limit on task creation/completion meant infinite coin farming
+
+### Action / Fix ✅
+
+- Wired `coinService.awardTaskCompletion()` for coin rewards
+- Converted gacha pull rewards to coins (100 coins × pulls) since `GachaService` has no direct `addPulls` method
+- Added `DAILY_COIN_CAP = 200` constant and `getCoinsEarnedToday()` helper
+- Added `findCompletedByUserSince()` JPQL query to `UserTaskRepository`
+- `CompleteTaskResult` now returns actual coins credited, not the task's face value
+
+### Learnings ✨
+
+- `GachaService` is pull-execution logic, not a wallet — don't add economy methods there
+- Daily cap is better than task limits because it's invisible friction; users can still complete tasks, rewards just stop
+
+### STAR-ready bullets ⭐
+
+- **S:** Task completion granted no rewards and had no abuse prevention
+- **T:** Wire rewards end-to-end and prevent infinite coin farming
+- **A:** Integrated `CoinService`, converted pull rewards to coins, added daily cap with repository query
+- **R:** Coins now credit on completion; users capped at 200 coins/day from tasks
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
