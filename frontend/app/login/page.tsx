@@ -3,88 +3,64 @@
 import Link from "next/link";
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useAuth, API_BASE } from "../contexts/AuthContext";
 
 const LoginPage = () => {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+    setError(null);
     try {
-      const response = await fetch("http://localhost:8081/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // backend sets HttpOnly refresh token cookie
         body: JSON.stringify({ email, password }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Login successful:", data);
-
-        // Store the token in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.userId);
-        localStorage.setItem("email", data.email);
-        localStorage.setItem("role", data.role);
-
-        // Redirect to dashboard
-        window.location.href = "/dashboard";
+      const data = await res.json();
+      if (res.ok) {
+        // access token goes into memory via AuthContext — never localStorage
+        login(data.token, {
+          userId: String(data.userId),
+          email: data.email,
+          role: data.role ?? "USER",
+        });
       } else {
-        // Handle error response
-        const errorData = await response.json();
-        console.error("Login failed:", errorData.error || response.statusText);
-        alert(
-          errorData.error || "Login failed. Please check your credentials.",
-        );
+        setError(data.error || "Login failed. Please check your credentials.");
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Network error. Please check if the server is running.");
+    } catch {
+      setError("Network error. Please check if the server is running.");
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError(null);
     try {
-      const response = await fetch("http://localhost:8081/api/auth/google", {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ idToken: credentialResponse.credential }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Google login successful:", data);
-
-        // Store the token in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", String(data.userId));
-        localStorage.setItem("email", data.email);
-        localStorage.setItem("role", data.role);
-
-        // Redirect to dashboard
-        window.location.href = "/dashboard";
+      const data = await res.json();
+      if (res.ok) {
+        login(data.token, {
+          userId: String(data.userId),
+          email: data.email,
+          role: data.role ?? "USER",
+        });
       } else {
-        const errorData = await response.json();
-        console.error(
-          "Google login failed:",
-          errorData.error || response.statusText,
-        );
-        alert(errorData.error || "Google login failed. Please try again.");
+        setError(data.error || "Google login failed. Please try again.");
       }
-    } catch (error) {
-      console.error("Google login error:", error);
-      alert(
-        "Network error during Google login. Please check if the server is running.",
-      );
+    } catch {
+      setError("Network error during Google login.");
     }
-  };
-
-  const handleGoogleError = () => {
-    console.error("Google login failed");
-    alert("Google login was cancelled or failed. Please try again.");
   };
 
   return (
@@ -93,6 +69,12 @@ const LoginPage = () => {
         <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
           Login
         </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -125,34 +107,31 @@ const LoginPage = () => {
           >
             Login
           </button>
-
           <div className="text-right">
             <Link
               href="#"
-              className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition duration-200"
+              className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold"
             >
               Forgot password?
             </Link>
           </div>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                Or continue with
-              </span>
-            </div>
+        <div className="mt-6 relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">
+              Or continue with
+            </span>
           </div>
         </div>
 
         <div className="mt-6 flex justify-center">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
+            onError={() => setError("Google login was cancelled or failed.")}
             useOneTap
             theme="outline"
             size="large"
@@ -166,7 +145,7 @@ const LoginPage = () => {
             Don't have an account?{" "}
             <Link
               href="/register"
-              className="text-indigo-600 hover:text-indigo-700 font-semibold transition duration-200"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold"
             >
               Create an account
             </Link>

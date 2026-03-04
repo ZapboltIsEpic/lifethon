@@ -1,9 +1,8 @@
 "use client";
 
 import { useAuth } from "../contexts/AuthContext";
+import { useApi } from "../lib/api";
 import { useState, useEffect } from "react";
-
-// ── Types matching InventoryItemDTO from InventoryService ─────────────────────
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 type ItemType =
@@ -25,8 +24,6 @@ interface InventoryItem {
   isEquipped: boolean;
   obtainedAt: string;
 }
-
-// ── Config ────────────────────────────────────────────────────────────────────
 
 const RARITY_CONFIG: Record<
   Rarity,
@@ -63,7 +60,6 @@ const RARITY_CONFIG: Record<
     border: "border-yellow-400",
   },
 };
-
 const ITEM_TYPE_EMOJI: Record<ItemType, string> = {
   CHARACTER: "🧑",
   COSTUME: "👗",
@@ -72,22 +68,16 @@ const ITEM_TYPE_EMOJI: Record<ItemType, string> = {
   RESOURCE: "🪨",
 };
 
-const API = "http://localhost:8081";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 const RarityBadge = ({ rarity }: { rarity: Rarity }) => {
-  const cfg = RARITY_CONFIG[rarity];
+  const c = RARITY_CONFIG[rarity];
   return (
     <span
-      className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg} border ${cfg.border}`}
+      className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.color} ${c.bg} border ${c.border}`}
     >
-      {cfg.label}
+      {c.label}
     </span>
   );
 };
-
-// ── Item Card ─────────────────────────────────────────────────────────────────
 
 const ItemCard = ({
   item,
@@ -96,11 +86,11 @@ const ItemCard = ({
   item: InventoryItem;
   onClick: () => void;
 }) => {
-  const cfg = RARITY_CONFIG[item.rarity];
+  const c = RARITY_CONFIG[item.rarity];
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border-2 ${cfg.border} shadow hover:shadow-lg transition-all cursor-pointer hover:-translate-y-1 relative`}
+      className={`bg-white rounded-xl border-2 ${c.border} shadow hover:shadow-lg transition-all cursor-pointer hover:-translate-y-1 relative`}
     >
       {item.quantity > 1 && (
         <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full z-10">
@@ -113,7 +103,7 @@ const ItemCard = ({
         </div>
       )}
       <div
-        className={`h-32 flex items-center justify-center rounded-t-xl ${cfg.bg}`}
+        className={`h-32 flex items-center justify-center rounded-t-xl ${c.bg}`}
       >
         {item.imageUrl ? (
           <img
@@ -140,8 +130,6 @@ const ItemCard = ({
   );
 };
 
-// ── Detail Modal ──────────────────────────────────────────────────────────────
-
 const ItemModal = ({
   item,
   onClose,
@@ -153,21 +141,19 @@ const ItemModal = ({
   onEquip: (id: number) => void;
   onDiscard: (id: number) => void;
 }) => {
-  const cfg = RARITY_CONFIG[item.rarity];
+  const c = RARITY_CONFIG[item.rarity];
   const canEquip =
     item.itemType !== "CONSUMABLE" && item.itemType !== "RESOURCE";
-  const isConsumable = item.itemType === "CONSUMABLE";
-
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full max-w-sm border-2 ${cfg.border} overflow-hidden`}
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-sm border-2 ${c.border} overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`h-44 flex items-center justify-center ${cfg.bg}`}>
+        <div className={`h-44 flex items-center justify-center ${c.bg}`}>
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
@@ -178,17 +164,14 @@ const ItemModal = ({
             <span className="text-7xl">{ITEM_TYPE_EMOJI[item.itemType]}</span>
           )}
         </div>
-
         <div className="p-5">
           <div className="flex items-start justify-between mb-2">
             <h2 className="text-xl font-bold text-gray-800">{item.name}</h2>
             <RarityBadge rarity={item.rarity} />
           </div>
-
           {item.description && (
             <p className="text-sm text-gray-500 mb-4">{item.description}</p>
           )}
-
           <div className="grid grid-cols-2 gap-2 mb-4">
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Type</p>
@@ -209,23 +192,18 @@ const ItemModal = ({
               </p>
             </div>
           </div>
-
           <div className="flex gap-2">
             {canEquip && (
               <button
                 onClick={() => onEquip(item.inventoryId)}
-                className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  item.isEquipped
-                    ? "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    : "bg-indigo-500 text-white hover:bg-indigo-600"
-                }`}
+                className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors ${item.isEquipped ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-indigo-500 text-white hover:bg-indigo-600"}`}
               >
                 {item.isEquipped ? "Unequip" : "Equip"}
               </button>
             )}
-            {isConsumable && (
+            {item.itemType === "CONSUMABLE" && (
               <button
-                onClick={() => onEquip(item.inventoryId)} // calls /use endpoint — rename if needed
+                onClick={() => onEquip(item.inventoryId)}
                 className="flex-1 py-2 rounded-lg font-semibold text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition-colors"
               >
                 Use
@@ -238,7 +216,6 @@ const ItemModal = ({
               Discard
             </button>
           </div>
-
           <button
             onClick={onClose}
             className="w-full mt-2 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-600"
@@ -251,16 +228,14 @@ const ItemModal = ({
   );
 };
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
 const InventoryPage = () => {
   const { user, isLoading } = useAuth();
+  const api = useApi();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [discardTarget, setDiscardTarget] = useState<number | null>(null);
-
   const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState<Rarity | "ALL">("ALL");
   const [typeFilter, setTypeFilter] = useState<ItemType | "ALL">("ALL");
@@ -269,19 +244,12 @@ const InventoryPage = () => {
     if (user) fetchInventory();
   }, [user]);
 
-  const authHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  });
-
   const fetchInventory = async () => {
     setFetching(true);
     try {
-      const res = await fetch(`${API}/api/inventory`, {
-        headers: authHeaders(),
-      });
+      const res = await api.get("/api/inventory");
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const data: InventoryItem[] = await res.json();
-      setItems(data);
+      setItems(await res.json());
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -289,17 +257,13 @@ const InventoryPage = () => {
     }
   };
 
-  // ⚠️ Update these paths once you paste your InventoryController
   const handleEquip = async (inventoryId: number) => {
     const target = items.find((i) => i.inventoryId === inventoryId);
     if (!target) return;
     const action = target.isEquipped ? "unequip" : "equip";
     try {
-      const res = await fetch(`${API}/api/inventory/${inventoryId}/${action}`, {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      if (!res.ok) throw new Error(`${action} failed: ${res.status}`);
+      const res = await api.post(`/api/inventory/${inventoryId}/${action}`);
+      if (!res.ok) return;
       const updated: InventoryItem = await res.json();
       setItems((prev) =>
         prev.map((i) => (i.inventoryId === inventoryId ? updated : i)),
@@ -312,20 +276,10 @@ const InventoryPage = () => {
     }
   };
 
-  const handleDiscard = (inventoryId: number) => {
-    setDiscardTarget(inventoryId);
-    setSelectedItem(null);
-  };
-
-  // ⚠️ Update DELETE path to match your controller
   const confirmDiscard = async () => {
     if (!discardTarget) return;
     try {
-      const res = await fetch(`${API}/api/inventory/${discardTarget}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      });
-      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+      await api.delete(`/api/inventory/${discardTarget}`);
       setItems((prev) => prev.filter((i) => i.inventoryId !== discardTarget));
     } catch (err) {
       console.error(err);
@@ -334,24 +288,21 @@ const InventoryPage = () => {
     }
   };
 
-  const filtered = items.filter((item) => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchRarity = rarityFilter === "ALL" || item.rarity === rarityFilter;
-    const matchType = typeFilter === "ALL" || item.itemType === typeFilter;
-    return matchSearch && matchRarity && matchType;
-  });
+  const filtered = items.filter(
+    (i) =>
+      i.name.toLowerCase().includes(search.toLowerCase()) &&
+      (rarityFilter === "ALL" || i.rarity === rarityFilter) &&
+      (typeFilter === "ALL" || i.itemType === typeFilter),
+  );
 
-  // ── States ────────────────────────────────────────────────────────────────
-
-  if (isLoading || fetching) {
+  if (isLoading || fetching)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-sm">
@@ -367,52 +318,41 @@ const InventoryPage = () => {
         </div>
       </div>
     );
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-800">🎒 Inventory</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {items.length} unique item{items.length !== 1 ? "s" : ""}{" "}
-              &nbsp;·&nbsp;
-              {items.reduce((sum, i) => sum + i.quantity, 0)} total
+              {items.length} unique ·{" "}
+              {items.reduce((s, i) => s + i.quantity, 0)} total
             </p>
           </div>
 
-          {/* Rarity summary — clickable to filter */}
           <div className="grid grid-cols-5 gap-3 mb-6">
             {(Object.keys(RARITY_CONFIG) as Rarity[]).map((rarity) => {
               const count = items
                 .filter((i) => i.rarity === rarity)
                 .reduce((s, i) => s + i.quantity, 0);
-              const cfg = RARITY_CONFIG[rarity];
+              const c = RARITY_CONFIG[rarity];
               const active = rarityFilter === rarity;
               return (
                 <div
                   key={rarity}
                   onClick={() => setRarityFilter(active ? "ALL" : rarity)}
-                  className={`bg-white rounded-xl p-3 border-2 cursor-pointer transition-all text-center ${
-                    active
-                      ? `${cfg.border} shadow-md scale-105`
-                      : "border-transparent hover:border-gray-200"
-                  }`}
+                  className={`bg-white rounded-xl p-3 border-2 cursor-pointer transition-all text-center ${active ? `${c.border} shadow-md scale-105` : "border-transparent hover:border-gray-200"}`}
                 >
-                  <p className={`font-bold text-xl ${cfg.color}`}>{count}</p>
+                  <p className={`font-bold text-xl ${c.color}`}>{count}</p>
                   <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
-                    {cfg.label}
+                    {c.label}
                   </p>
                 </div>
               );
             })}
           </div>
 
-          {/* Filters */}
           <div className="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
             <input
               type="text"
@@ -463,7 +403,6 @@ const InventoryPage = () => {
             )}
           </div>
 
-          {/* Grid */}
           {filtered.length === 0 ? (
             <div className="bg-white rounded-xl shadow p-16 text-center">
               <p className="text-4xl mb-3">🎒</p>
@@ -492,17 +431,18 @@ const InventoryPage = () => {
         </div>
       </div>
 
-      {/* Item modal */}
       {selectedItem && (
         <ItemModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onEquip={handleEquip}
-          onDiscard={handleDiscard}
+          onDiscard={(id) => {
+            setDiscardTarget(id);
+            setSelectedItem(null);
+          }}
         />
       )}
 
-      {/* Discard confirm */}
       {discardTarget !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center">

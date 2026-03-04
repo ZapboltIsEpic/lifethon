@@ -5,21 +5,22 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-interface User {
+export interface User {
   userId: string;
   email: string;
-  token: string;
   role: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void;
-  logout: () => void;
+  token: string | null;
+  login: (token: string, user: User) => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: () => boolean;
@@ -27,98 +28,92 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicRoutes = ["/login", "/register", "/"];
-const protectedRoutes = ["/dashboard"];
+const PUBLIC = ["/login", "/register", "/"];
+const PROTECTED = [
+  "/dashboard",
+  "/inventory",
+  "/tasks",
+  "/gacha",
+  "/shop",
+  "/game",
+  "/flashcards",
+  "/admin",
+];
+
+export const API_BASE = "http://localhost:8081";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
-      const email = localStorage.getItem("email");
-      const role = localStorage.getItem("role");
-
-      if (token && userId && email && role) {
-        try {
-          // Verify token with backend
-          const response = await fetch(
-            "http://localhost:8081/api/auth/verify",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          );
-
-          if (response.ok) {
-            setUser({ token, userId, email, role });
-
-            // If on login/register page and authenticated, redirect to dashboard
-            if (publicRoutes.includes(pathname)) {
-              router.push("/dashboard");
-            }
-          } else {
-            // Invalid token, clear storage
-            localStorage.clear();
-            setUser(null);
-
-            // If on protected route, redirect to login
-            if (protectedRoutes.some((route) => pathname.startsWith(route))) {
-              router.push("/login");
-            }
-          }
-        } catch (error) {
-          console.error("Token verification failed:", error);
-          localStorage.clear();
-          setUser(null);
+    (async () => {
+      try {
+        // Refresh token is HttpOnly cookie — browser sends it automatically
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setToken(d.token);
+          setUser({
+            userId: String(d.userId),
+            email: d.email,
+            role: d.role ?? "USER",
+          });
+          if (PUBLIC.includes(pathname)) router.push("/dashboard");
+        } else {
+          if (PROTECTED.some((p) => pathname.startsWith(p)))
+            router.push("/login");
         }
-      } else {
-        // No token, redirect to login if on protected route
-        if (protectedRoutes.some((route) => pathname.startsWith(route))) {
+      } catch {
+        if (PROTECTED.some((p) => pathname.startsWith(p)))
           router.push("/login");
-        }
+      } finally {
+        setIsLoading(false);
       }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      setIsLoading(false);
-    };
+  const login = useCallback(
+    (newToken: string, userData: User) => {
+      setToken(newToken);
+      setUser(userData);
+      router.push("/dashboard");
+    },
+    [router],
+  );
 
-    initAuth();
-  }, [pathname, router]);
-
-  const login = (userData: User) => {
-    localStorage.setItem("token", userData.token);
-    localStorage.setItem("userId", userData.userId);
-    localStorage.setItem("email", userData.email);
-    localStorage.setItem("role", userData.role);
-    setUser(userData);
-    router.push("/dashboard");
-  };
-
-  const logout = () => {
-    localStorage.clear();
+  const logout = useCallback(async () => {
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      /* ignore */
+    }
+    setToken(null);
     setUser(null);
     router.push("/login");
-  };
-
-  const isAdmin = () => {
-    return user?.role === "ADMIN";
-  };
+  }, [token, router]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        token,
         login,
         logout,
         isAuthenticated: !!user,
         isLoading,
-        isAdmin,
+        isAdmin: useCallback(() => user?.role === "ADMIN", [user]),
       }}
     >
       {children}
@@ -127,9 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
