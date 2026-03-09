@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         if (res.ok) {
           const d = await res.json();
+          console.log(d);
           setToken(d.token);
           setUser({
             userId: String(d.userId),
