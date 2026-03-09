@@ -3,6 +3,7 @@
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../lib/api";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY";
 type ItemType =
@@ -106,10 +107,11 @@ const ItemCard = ({
         className={`h-32 flex items-center justify-center rounded-t-xl ${c.bg}`}
       >
         {item.imageUrl ? (
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.name}
-            className="h-full w-full object-cover rounded-t-xl"
+            fill
+            className="object-cover rounded-t-xl"
           />
         ) : (
           <span className="text-5xl">{ITEM_TYPE_EMOJI[item.itemType]}</span>
