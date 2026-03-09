@@ -378,8 +378,9 @@ const TasksPage = () => {
         dueDate: form.dueDate || null,
         repeatSchedule: form.repeatSchedule || null,
       });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setTasks((prev) => [await res.json(), ...prev]);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTasks((prev) => [data, ...prev]);
       setShowCreate(false);
     } catch (err: any) {
       alert(err.message);
