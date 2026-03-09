@@ -152,18 +152,21 @@ const ItemModal = ({
       onClick={onClose}
     >
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full max-w-sm border-2 ${c.border} overflow-hidden`}
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-sm border-2 ${c.border}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`h-44 flex items-center justify-center ${c.bg}`}>
+        <div className={`relative h-44 ${c.bg} overflow-hidden rounded-t-2xl`}>
           {item.imageUrl ? (
-            <img
+            <Image
               src={item.imageUrl}
               alt={item.name}
-              className="h-full w-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
-            <span className="text-7xl">{ITEM_TYPE_EMOJI[item.itemType]}</span>
+            <span className="text-7xl absolute inset-0 flex items-center justify-center">
+              {ITEM_TYPE_EMOJI[item.itemType]}
+            </span>
           )}
         </div>
         <div className="p-5">
