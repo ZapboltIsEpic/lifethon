@@ -1,7 +1,7 @@
 package com.example.lifethon.service;
 
 import com.example.lifethon.entity.User;
-import com.example.lifethon.entity.User.Role;
+import com.example.lifethon.entity.User.AuthProvider;
 import com.example.lifethon.repository.UserRepository;
 import com.example.lifethon.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,245 +13,182 @@ import java.util.Optional;
 @Service
 public class AuthService {
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository  userRepository;
+    @Autowired private JwtUtil         jwtUtil;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private OAuthService    oAuthService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private OAuthService oAuthService;
+    // ── Local login ───────────────────────────────────────────────────────────
 
     public AuthResponse authenticate(String email, String password) {
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-        if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("Password is required");
-        }
+        if (email    == null || email.trim().isEmpty())    throw new IllegalArgumentException("Email is required");
+        if (password == null || password.trim().isEmpty()) throw new IllegalArgumentException("Password is required");
 
-        // Look up user in database by email
-        Optional<User> userOptional = userRepository.findByEmail(email);
-        
-        if (userOptional.isEmpty()) {
-            throw new InvalidCredentialsException("Invalid email or password");
-        }
-        
-        User user = userOptional.get();
-        
-        // Check if user is active
-        if (user.getIsActive() == null || !user.getIsActive()) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
+
+        if (user.getIsActive() == null || !user.getIsActive())
             throw new InvalidCredentialsException("Account is inactive");
-        }
-        
-        // ✅ FIXED: Use BCrypt to verify password
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+
+        // Google-only accounts have no usable local password
+        if (user.getAuthProvider() != AuthProvider.LOCAL)
+            throw new InvalidCredentialsException(
+                "This account uses " + user.getAuthProvider() + " login. Please sign in with that provider.");
+
+        if (!passwordEncoder.matches(password, user.getPassword()))
             throw new InvalidCredentialsException("Invalid email or password");
-        }
 
-        // Generate JWT token using JwtUtil
-        String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-
-        return new AuthResponse(
-            "Login successful",
-            token,
-            refreshToken,
-            user.getId(),
-            user.getEmail(),
-            user.getRole()
-        );
+        return buildResponse("Login successful", user);
     }
 
-    public AuthResponse register(String email, String password, String firstName, String lastName) {
-        // Validate input
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-        if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("Password is required");
-        }
-        
-        // Validate password strength (optional but recommended)
-        if (password.length() < 6) {
+    // ── Registration ──────────────────────────────────────────────────────────
+
+    public AuthResponse register(String email, String password,
+                                 String firstName, String lastName) {
+        if (email    == null || email.trim().isEmpty())    throw new IllegalArgumentException("Email is required");
+        if (password == null || password.trim().isEmpty()) throw new IllegalArgumentException("Password is required");
+        if (password.length() < 6)
             throw new IllegalArgumentException("Password must be at least 6 characters long");
-        }
-
-        // Check if email already exists
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(email))
             throw new IllegalArgumentException("Email already exists");
-        }
 
-        // Create new user
-        User newUser = new User();
-        newUser.setEmail(email);
-        
-        // ✅ FIXED: Hash password with BCrypt before saving
-        String hashedPassword = passwordEncoder.encode(password);
-        newUser.setPassword(hashedPassword);
-        
-        newUser.setFirstName(firstName);
-        newUser.setLastName(lastName);
-        newUser.setIsActive(true);
-        newUser.setRole(Role.USER);
+        User user = new User();
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setIsActive(true);
+        user.setAuthProvider(AuthProvider.LOCAL);   // ← explicit
 
-        // Save to database
-        User savedUser = userRepository.save(newUser);
-
-        // Generate JWT token using JwtUtil
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole());
-        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
-
-        return new AuthResponse(
-            "Registration successful",
-            token,
-            refreshToken,
-            savedUser.getId(),
-            savedUser.getEmail(),
-            savedUser.getRole()
-        );
+        User saved = userRepository.save(user);
+        return buildResponse("Registration successful", saved);
     }
 
-    public AuthResponse refreshToken(String refreshToken) {
-        try {
-            // Validate the refresh token
-            if (jwtUtil.validateToken(refreshToken)) {
-                String email = jwtUtil.extractEmail(refreshToken);
-                Optional<User> userOptional = userRepository.findByEmail(email);
-                
-                if (userOptional.isPresent()) {
-                    User user = userOptional.get();
-                    
-                    // Generate new tokens
-                    String newToken = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
-                    String newRefreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-                    
-                    return new AuthResponse(
-                        "Token refreshed successfully",
-                        newToken,
-                        newRefreshToken,
-                        user.getId(),
-                        user.getEmail(),
-                        user.getRole()
-                    );
-                }
-            }
-            throw new InvalidCredentialsException("Invalid refresh token");
-        } catch (Exception e) {
-            throw new InvalidCredentialsException("Invalid refresh token");
-        }
-    }
-
-    public boolean verifyToken(String token) {
-        return jwtUtil.validateToken(token);
-    }
-
-    public void logout(String token) {
-        // TODO: Implement token blacklist if needed
-        // For now, client-side removal of token is sufficient
-        // In a production system, you might want to:
-        // 1. Store invalidated tokens in Redis with expiration
-        // 2. Check blacklist before validating tokens
-    }
+    // ── Google OAuth ──────────────────────────────────────────────────────────
 
     public AuthResponse googleLogin(String idToken) {
-        // Verify Google token and get user info
-        OAuthService.GoogleUserInfo googleUser = oAuthService.verifyGoogleToken(idToken);
-        
-        // Check if user exists
-        Optional<User> existingUser = userRepository.findByEmail(googleUser.getEmail());
-        
-        if (existingUser.isPresent()) {
-            // User exists - log them in
-            User user = existingUser.get();
-            
-            if (user.getIsActive() == null || !user.getIsActive()) {
+        OAuthService.GoogleUserInfo google = oAuthService.verifyGoogleToken(idToken);
+
+        Optional<User> existing = userRepository.findByEmail(google.getEmail());
+
+        if (existing.isPresent()) {
+            User user = existing.get();
+            if (user.getIsActive() == null || !user.getIsActive())
                 throw new InvalidCredentialsException("Account is inactive");
-            }
-            
-            String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
-            String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-            
-            return new AuthResponse(
-                "Google login successful",
-                token,
-                refreshToken,
-                user.getId(),
-                user.getEmail(),
-                user.getRole()
-            );
-        } else {
-            // User doesn't exist - create new account
-            User newUser = new User();
-            newUser.setEmail(googleUser.getEmail());
-            newUser.setFirstName(googleUser.getFirstName());
-            newUser.setLastName(googleUser.getLastName());
-            
-            // Set a random password (user won't need it for OAuth login)
-            String randomPassword = java.util.UUID.randomUUID().toString();
-            newUser.setPassword(passwordEncoder.encode(randomPassword));
-            
-            newUser.setIsActive(true);
-            
-            User savedUser = userRepository.save(newUser);
-            
-            String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole());
-            String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
-            
-            return new AuthResponse(
-                "Google account created and logged in",
-                token,
-                refreshToken,
-                savedUser.getId(),
-                savedUser.getEmail(),
-                savedUser.getRole()
-            );
+            return buildResponse("Google login successful", user);
         }
+
+        // Create new account
+        User user = new User();
+        user.setEmail(google.getEmail());
+        user.setFirstName(google.getFirstName());
+        user.setLastName(google.getLastName());
+        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+        user.setIsActive(true);
+        user.setAuthProvider(AuthProvider.GOOGLE);  // ← marks this as OAuth account
+
+        User saved = userRepository.save(user);
+        return buildResponse("Google account created and logged in", saved);
     }
 
-    public String facebookLogin() {
-        // TODO: Implement Facebook OAuth flow
-        return "facebook-dummy-token";
+    // ── Token operations ──────────────────────────────────────────────────────
+
+    public AuthResponse refreshToken(String refreshToken) {
+        if (!jwtUtil.validateToken(refreshToken))
+            throw new InvalidCredentialsException("Invalid refresh token");
+
+        String email = jwtUtil.extractEmail(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+
+        return buildResponse("Token refreshed successfully", user);
     }
 
-    // Inner class for AuthResponse
+    public boolean verifyToken(String token) { return jwtUtil.validateToken(token); }
+
+    public void logout(String token) { /* token blacklist can be added here */ }
+
+    public String facebookLogin() { return "facebook-dummy-token"; }
+
+    // ── Credential changes ────────────────────────────────────────────────────
+
+    /**
+     * Change password for LOCAL accounts only.
+     * Google users cannot set a local password through this endpoint.
+     */
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getAuthProvider() != AuthProvider.LOCAL)
+            throw new IllegalArgumentException(
+                "Password change is not available for " + user.getAuthProvider() + " accounts.");
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword()))
+            throw new InvalidCredentialsException("Current password is incorrect");
+
+        if (newPassword == null || newPassword.length() < 6)
+            throw new IllegalArgumentException("New password must be at least 6 characters");
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    /**
+     * Change email — requires current password for LOCAL users;
+     * Google users can still change email but must confirm via re-authentication
+     * (for simplicity we skip password check for GOOGLE users here).
+     */
+    public void changeEmail(Long userId, String newEmail, String currentPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (userRepository.existsByEmail(newEmail))
+            throw new IllegalArgumentException("Email is already in use");
+
+        // LOCAL accounts must verify current password
+        if (user.getAuthProvider() == AuthProvider.LOCAL) {
+            if (!passwordEncoder.matches(currentPassword, user.getPassword()))
+                throw new InvalidCredentialsException("Current password is incorrect");
+        }
+
+        user.setEmail(newEmail);
+        userRepository.save(user);
+    }
+
+    // ── Private helper ────────────────────────────────────────────────────────
+
+    private AuthResponse buildResponse(String message, User user) {
+        String token        = jwtUtil.generateToken(user.getEmail(), user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        return new AuthResponse(
+            message, token, refreshToken,
+            user.getId(), user.getEmail(),
+            user.getAuthProvider().name()   // e.g. "LOCAL" or "GOOGLE"
+        );
+    }
+
+    // ── Response DTO ──────────────────────────────────────────────────────────
+
     public static class AuthResponse {
-        private String message;
-        private String token;
-        private String refreshToken;
-        private Long userId;
-        private String email;
-        private Role role;
+        private String message, token, refreshToken, email, authProvider;
+        private Long   userId;
 
-        public AuthResponse(String message, String token, String refreshToken, Long userId, String email, Role role) {
-            this.message = message;
-            this.token = token;
+        public AuthResponse(String message, String token, String refreshToken,
+                            Long userId, String email, String authProvider) {
+            this.message      = message;
+            this.token        = token;
             this.refreshToken = refreshToken;
-            this.userId = userId;
-            this.email = email;
-            this.role = role;
+            this.userId       = userId;
+            this.email        = email;
+            this.authProvider = authProvider;
         }
 
-        // Getters and Setters
-        public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-        
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        
+        public String getMessage()      { return message; }
+        public String getToken()        { return token; }
         public String getRefreshToken() { return refreshToken; }
-        public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
-        
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-
-        public Role getRole() { return role; }
-        public void setRole(Role role) { this.role = role; }
+        public Long   getUserId()       { return userId; }
+        public String getEmail()        { return email; }
+        public String getAuthProvider() { return authProvider; }
     }
 }

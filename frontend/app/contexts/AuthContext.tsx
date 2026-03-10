@@ -10,10 +10,13 @@ import {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
+export type AuthProvider = "LOCAL" | "GOOGLE" | "FACEBOOK";
+
 export interface User {
   userId: string;
   email: string;
   role: string;
+  authProvider: AuthProvider; // ← NEW
 }
 
 interface AuthContextType {
@@ -24,6 +27,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: () => boolean;
+  isGoogleUser: () => boolean; // ← convenience helper
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +42,8 @@ const PROTECTED = [
   "/game",
   "/flashcards",
   "/admin",
+  "/settings",
+  "/profile",
 ];
 
 export const API_BASE = "http://localhost:8081";
@@ -52,19 +58,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
-        // Refresh token is HttpOnly cookie — browser sends it automatically
         const res = await fetch(`${API_BASE}/api/auth/refresh`, {
           method: "POST",
           credentials: "include",
         });
         if (res.ok) {
           const d = await res.json();
-          console.log(d);
           setToken(d.token);
           setUser({
             userId: String(d.userId),
             email: d.email,
             role: d.role ?? "USER",
+            authProvider: d.authProvider ?? "LOCAL", // ← read from response
           });
           if (PUBLIC.includes(pathname)) router.push("/dashboard");
         } else {
@@ -115,6 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         isLoading,
         isAdmin: useCallback(() => user?.role === "ADMIN", [user]),
+        isGoogleUser: useCallback(
+          () => user?.authProvider === "GOOGLE",
+          [user],
+        ),
       }}
     >
       {children}

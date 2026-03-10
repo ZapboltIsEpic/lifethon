@@ -4,33 +4,46 @@ import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../lib/api";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-type Section = "password" | "email" | "danger";
-
 interface Toast {
   msg: string;
   type: "success" | "error";
 }
 
-// ── Small components ──────────────────────────────────────────────────────────
+// ── Reusable sub-components ───────────────────────────────────────────────────
+
 const SectionCard = ({
   title,
   description,
   icon,
+  danger = false,
   children,
 }: {
   title: string;
   description: string;
   icon: string;
+  danger?: boolean;
   children: React.ReactNode;
 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div className="px-6 py-5 border-b border-gray-50">
+  <div
+    className={`bg-white rounded-2xl shadow-sm overflow-hidden
+    ${danger ? "border border-red-100" : "border border-gray-100"}`}
+  >
+    <div
+      className={`px-6 py-5 border-b ${danger ? "border-red-50" : "border-gray-50"}`}
+    >
       <div className="flex items-center gap-3">
         <span className="text-2xl">{icon}</span>
         <div>
-          <h2 className="font-bold text-gray-800 text-lg">{title}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{description}</p>
+          <h2
+            className={`font-bold text-lg ${danger ? "text-red-700" : "text-gray-800"}`}
+          >
+            {title}
+          </h2>
+          <p
+            className={`text-sm mt-0.5 ${danger ? "text-red-300" : "text-gray-400"}`}
+          >
+            {description}
+          </p>
         </div>
       </div>
     </div>
@@ -45,13 +58,15 @@ const Field = ({
   onChange,
   placeholder,
   hint,
+  readOnly = false,
 }: {
   label: string;
   type?: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange?: (v: string) => void;
   placeholder?: string;
   hint?: string;
+  readOnly?: boolean;
 }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-600 mb-1.5">
@@ -60,48 +75,94 @@ const Field = ({
     <input
       type={type}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      readOnly={readOnly}
+      onChange={(e) => onChange?.(e.target.value)}
       placeholder={placeholder}
-      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800
-        focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent
-        transition-all placeholder:text-gray-300"
+      className={`w-full border rounded-xl px-4 py-2.5 text-sm transition-all
+        ${
+          readOnly
+            ? "border-gray-100 bg-gray-50 text-gray-400 cursor-default"
+            : "border-gray-200 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent placeholder:text-gray-300"
+        }
+      `}
     />
     {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
   </div>
 );
 
 const StrengthBar = ({ password }: { password: string }) => {
-  const checks = [
+  if (!password) return null;
+  const score = [
     password.length >= 8,
     /[A-Z]/.test(password),
     /[0-9]/.test(password),
     /[^A-Za-z0-9]/.test(password),
-  ];
-  const score = checks.filter(Boolean).length;
-  const colors = [
+  ].filter(Boolean).length;
+  const trackColors = [
     "bg-red-400",
     "bg-orange-400",
     "bg-yellow-400",
     "bg-green-400",
   ];
+  const textColors = [
+    "text-red-400",
+    "text-orange-400",
+    "text-yellow-500",
+    "text-green-500",
+  ];
   const labels = ["Weak", "Fair", "Good", "Strong"];
-
-  if (!password) return null;
   return (
     <div className="mt-2">
       <div className="flex gap-1 mb-1">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className={`h-1.5 flex-1 rounded-full transition-all ${i < score ? colors[score - 1] : "bg-gray-100"}`}
+            className={`h-1.5 flex-1 rounded-full transition-all ${i < score ? trackColors[score - 1] : "bg-gray-100"}`}
           />
         ))}
       </div>
       <p
-        className={`text-xs font-medium ${["text-red-400", "text-orange-400", "text-yellow-500", "text-green-500"][score - 1] ?? "text-gray-300"}`}
+        className={`text-xs font-medium ${textColors[score - 1] ?? "text-gray-300"}`}
       >
-        {password ? (labels[score - 1] ?? "Very Weak") : ""}
+        {labels[score - 1] ?? "Very Weak"}
       </p>
+    </div>
+  );
+};
+
+// ── Locked panel shown to OAuth users ─────────────────────────────────────────
+const OAuthLockedPanel = ({ provider }: { provider: string }) => {
+  const providerName =
+    provider === "GOOGLE"
+      ? "Google"
+      : provider.charAt(0) + provider.slice(1).toLowerCase();
+  const icon = provider === "GOOGLE" ? "🔵" : "🔷";
+  return (
+    <div className="flex items-start gap-4 bg-blue-50 border border-blue-100 rounded-xl p-4">
+      <span className="text-3xl mt-0.5">{icon}</span>
+      <div>
+        <p className="font-bold text-blue-800 text-sm">
+          You're signed in with {providerName}
+        </p>
+        <p className="text-sm text-blue-600 mt-1 leading-relaxed">
+          Your password is managed by {providerName}. To change it, visit
+          your&nbsp;
+          {provider === "GOOGLE" && (
+            <a
+              href="https://myaccount.google.com/security"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-medium hover:text-blue-800"
+            >
+              Google Account security settings
+            </a>
+          )}
+          .
+        </p>
+        <p className="text-xs text-blue-400 mt-2">
+          You can still change your Lifethon email address below.
+        </p>
+      </div>
     </div>
   );
 };
@@ -110,6 +171,7 @@ const StrengthBar = ({ password }: { password: string }) => {
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const api = useApi();
+  const isOAuth = user?.authProvider !== "LOCAL";
 
   // Password form
   const [currentPw, setCurrentPw] = useState("");
@@ -133,7 +195,8 @@ export default function SettingsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPw !== confirmPw) {
@@ -148,7 +211,6 @@ export default function SettingsPage() {
       showToast("New password must differ from current.", "error");
       return;
     }
-
     setPwLoading(true);
     try {
       const res = await api.post("/api/users/change-password", {
@@ -181,15 +243,14 @@ export default function SettingsPage() {
       showToast("That's already your email.", "error");
       return;
     }
-
     setEmailLoading(true);
     try {
       const res = await api.post("/api/users/change-email", {
         newEmail,
-        currentPassword: emailPw,
+        currentPassword: isOAuth ? null : emailPw, // Google users skip password check
       });
       if (res.ok) {
-        showToast("Email updated. Please log in again.");
+        showToast("Email updated. Logging you out…");
         setTimeout(() => logout(), 1800);
       } else {
         const d = await res.json();
@@ -230,8 +291,13 @@ export default function SettingsPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-semibold shadow-xl transition-all
-          ${toast.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}
+          className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl
+          text-sm font-semibold shadow-xl whitespace-nowrap
+          ${
+            toast.type === "success"
+              ? "bg-green-50 text-green-700 border border-green-200"
+              : "bg-red-50 text-red-600 border border-red-200"
+          }`}
         >
           {toast.msg}
         </div>
@@ -246,77 +312,98 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Current account info */}
+        {/* Account card */}
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-6 py-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-lg flex-shrink-0">
+          <div
+            className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center
+            text-white font-black text-lg flex-shrink-0"
+          >
             {user?.email?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div>
             <p className="font-bold text-indigo-900">{user?.email}</p>
-            <p className="text-xs text-indigo-400 mt-0.5">
-              User ID: {user?.userId} · Role: {user?.role}
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-indigo-400">ID: {user?.userId}</p>
+              <span className="text-indigo-200">·</span>
+              {/* Auth provider badge */}
+              {user?.authProvider === "GOOGLE" ? (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold
+                  bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full"
+                >
+                  🔵 Google account
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-semibold
+                  bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full"
+                >
+                  🔑 Local account
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Change password ─────────────────────────────────────────────── */}
+        {/* ── Change Password ───────────────────────────────────────────────── */}
         <SectionCard
           title="Change Password"
           description="Update your login password"
           icon="🔐"
         >
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <Field
-              label="Current Password"
-              type="password"
-              value={currentPw}
-              onChange={setCurrentPw}
-              placeholder="Enter current password"
-            />
-
-            <div>
+          {isOAuth ? (
+            <OAuthLockedPanel provider={user?.authProvider ?? "GOOGLE"} />
+          ) : (
+            <form onSubmit={handleChangePassword} className="space-y-4">
               <Field
-                label="New Password"
+                label="Current Password"
                 type="password"
-                value={newPw}
-                onChange={setNewPw}
-                placeholder="Enter new password"
+                value={currentPw}
+                onChange={setCurrentPw}
+                placeholder="Enter current password"
               />
-              <StrengthBar password={newPw} />
-            </div>
-
-            <div>
-              <Field
-                label="Confirm New Password"
-                type="password"
-                value={confirmPw}
-                onChange={setConfirmPw}
-                placeholder="Re-enter new password"
-              />
-              {matchBad && (
-                <p className="text-xs text-red-400 mt-1">
-                  Passwords don't match
-                </p>
-              )}
-              {matchOk && (
-                <p className="text-xs text-green-500 mt-1">✓ Passwords match</p>
-              )}
-            </div>
-
-            <div className="pt-1">
+              <div>
+                <Field
+                  label="New Password"
+                  type="password"
+                  value={newPw}
+                  onChange={setNewPw}
+                  placeholder="Enter new password"
+                />
+                <StrengthBar password={newPw} />
+              </div>
+              <div>
+                <Field
+                  label="Confirm New Password"
+                  type="password"
+                  value={confirmPw}
+                  onChange={setConfirmPw}
+                  placeholder="Re-enter new password"
+                />
+                {matchBad && (
+                  <p className="text-xs text-red-400 mt-1">
+                    Passwords don't match
+                  </p>
+                )}
+                {matchOk && (
+                  <p className="text-xs text-green-500 mt-1">
+                    ✓ Passwords match
+                  </p>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={pwLoading || !currentPw || !newPw || !confirmPw}
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm
-                  disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white
+                  font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {pwLoading ? "Updating…" : "Update Password"}
               </button>
-            </div>
-          </form>
+            </form>
+          )}
         </SectionCard>
 
-        {/* ── Change email ────────────────────────────────────────────────── */}
+        {/* ── Change Email ──────────────────────────────────────────────────── */}
         <SectionCard
           title="Change Email"
           description="Update the email address on your account"
@@ -325,9 +412,8 @@ export default function SettingsPage() {
           <form onSubmit={handleChangeEmail} className="space-y-4">
             <Field
               label="Current Email"
-              type="email"
               value={user?.email ?? ""}
-              onChange={() => {}}
+              readOnly
               hint="This is your current email address"
             />
 
@@ -339,45 +425,52 @@ export default function SettingsPage() {
               placeholder="Enter new email"
             />
 
-            <Field
-              label="Confirm Password"
-              type="password"
-              value={emailPw}
-              onChange={setEmailPw}
-              placeholder="Enter your current password to confirm"
-            />
+            {/* Only show password field for LOCAL accounts */}
+            {!isOAuth && (
+              <Field
+                label="Confirm with Password"
+                type="password"
+                value={emailPw}
+                onChange={setEmailPw}
+                placeholder="Enter your current password to confirm"
+              />
+            )}
 
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            {isOAuth && (
+              <div className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                ℹ️ As a {user?.authProvider === "GOOGLE" ? "Google" : "OAuth"}{" "}
+                user, no password is required to change your Lifethon email.
+              </div>
+            )}
+
+            <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
               ⚠️ You'll be logged out after changing your email and will need to
               log in again.
-            </p>
+            </div>
 
             <button
               type="submit"
-              disabled={emailLoading || !newEmail || !emailPw}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm
-                disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={emailLoading || !newEmail || (!isOAuth && !emailPw)}
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white
+                font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {emailLoading ? "Updating…" : "Update Email"}
             </button>
           </form>
         </SectionCard>
 
-        {/* ── Danger zone ─────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden">
-          <div className="px-6 py-5 border-b border-red-50 flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <h2 className="font-bold text-red-700 text-lg">Danger Zone</h2>
-              <p className="text-sm text-red-300 mt-0.5">
-                Irreversible actions — proceed with caution
-              </p>
-            </div>
-          </div>
-          <div className="px-6 py-6 space-y-4">
+        {/* ── Danger Zone ───────────────────────────────────────────────────── */}
+        <SectionCard
+          title="Danger Zone"
+          description="Irreversible actions — proceed with caution"
+          icon="⚠️"
+          danger
+        >
+          <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Deleting your account will permanently remove all your data —
-              coins, inventory, tasks, and progress. This cannot be undone.
+              Deleting your account will permanently remove all your data
+              including coins, inventory, tasks, and progress. This cannot be
+              undone.
             </p>
             <div>
               <label className="block text-sm font-semibold text-gray-600 mb-1.5">
@@ -398,13 +491,13 @@ export default function SettingsPage() {
             <button
               onClick={handleDeleteAccount}
               disabled={deleteLoading || deleteConfirm !== "DELETE"}
-              className="px-6 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm
-                disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold
+                text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {deleteLoading ? "Deleting…" : "Delete My Account"}
             </button>
           </div>
-        </div>
+        </SectionCard>
       </div>
     </div>
   );
