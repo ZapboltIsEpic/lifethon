@@ -1043,6 +1043,51 @@ R: Task system live end-to-end; reward crediting pending CoinService integration
 - **A:** Integrated `CoinService`, converted pull rewards to coins, added daily cap with repository query
 - **R:** Coins now credit on completion; users capped at 200 coins/day from tasks
 
+---
+
+## Entry — 2026-03-10 | Area: fullstack / infra
+
+- **Title:** Auth provider tracking, settings page, schema migrations with Flyway
+- **Files / Paths:** `backend/entity/User.java`, `backend/service/AuthService.java`, `backend/controller/AuthController.java`, `backend/controller/UserController.java`, `backend/resources/application.properties`, `backend/resources/db/migration/V1__baseline_schema.sql`, `backend/resources/db/migration/V2__add_auth_provider.sql`, `frontend/app/settings/page.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/contexts/AuthContext.tsx`, `frontend/components/NavBar.tsx`
+- **Stage:** Fixed
+- **Tags:** #bug #auth #schema #migration #oauth #security
+
+### Problem / Observation 🚧
+
+- Settings page needed to support both local and Google users but the system had no way to distinguish them — `users` table had no `auth_provider` column
+- `ddl-auto=update` silently failed to add the new column to the existing table, causing `PSQLException: column auth_provider does not exist` on every login
+- After switching to `ddl-auto=validate`, app refused to start with `SchemaManagementException: missing column [auth_provider]` because Flyway hadn't run yet
+- `AuthService.buildResponse()` called `jwtUtil.generateToken(email, id)` but the real signature required a third `User.Role` argument — exploded at runtime with `Unresolved compilation problem`
+- `user.authProvider` was always `undefined` in React even though the API was sending it — `LoginPage` and `RegisterPage` constructed the user object manually on `login()` and never included `authProvider`, so it was lost immediately after login even though page reload worked fine via `/refresh`
+- One existing Google user (`zapboltisepic@gmail.com`) had `auth_provider = 'LOCAL'` because the account predated the column and got the `DEFAULT 'LOCAL'` backfill
+
+### Action / Fix ✅
+
+- Added `authProvider` enum (`LOCAL`, `GOOGLE`, `FACEBOOK`) to `User.java` alongside the existing `role` enum — a previous version had accidentally dropped `role` entirely, restored both
+- Added `changePassword()` and `changeEmail()` to `AuthService` — `changePassword()` blocks OAuth users with a clear error; `changeEmail()` skips password check for OAuth users
+- Added `POST /api/users/change-password` and `POST /api/users/change-email` to `UserController`, extracting `userId` from the JWT Authorization header
+- Replaced `ddl-auto=update` with `ddl-auto=validate` and introduced Flyway — `V1__baseline_schema.sql` captures the existing table, `V2__add_auth_provider.sql` adds the new column with `IF NOT EXISTS`
+- Added `spring.flyway.baseline-on-migrate=true` to handle the pre-existing database without wiping it
+- Fixed `buildResponse()` to pass `user.getRole()` as third arg to `generateToken()` and added `role` to `AuthResponse` DTO so `AuthController` no longer hardcodes `"USER"`
+- Fixed `LoginPage` and `RegisterPage` — added `authProvider: data.authProvider ?? "LOCAL"` (and `"GOOGLE"` for the Google handlers) to every `login()` call
+- Built `SettingsPage` with change password (hidden for OAuth, replaced with locked panel linking to Google security settings), change email (no password field for OAuth), and danger zone with `DELETE` confirmation
+- Added profile avatar dropdown to `NavBar` — MUI `Menu` with Dashboard / Profile / Settings / Logout, shows first letter of email as avatar
+- Manually backfilled `zapboltisepic@gmail.com`: `UPDATE users SET auth_provider = 'GOOGLE' WHERE email = 'zapboltisepic@gmail.com'`
+
+### Learnings ✨
+
+- `ddl-auto=update` is unreliable for altering existing tables — it works for greenfield schemas but silently skips `ALTER TABLE` on live ones. Flyway should be introduced as soon as the first migration is needed, not after
+- Hibernate `validate` runs before Flyway at startup, so switching straight from `update` to `validate` will crash if the schema is already out of date — fix is to apply the missing SQL once manually, then let Flyway own it
+- When a user object is built manually in multiple places (login, register, Google login), any new field on the `User` interface will be silently `undefined` until every call site is updated — a shared `buildUser(data)` factory function would prevent this entire class of bug
+- OAuth users need a clearly different code path for credential operations — failing loudly with a good error is better than silently throwing a BCrypt mismatch or doing nothing
+
+### STAR-ready bullets ⭐
+
+- S: Settings page needed to support both local and Google OAuth users but the system had no provider tracking — no DB column, no JWT field, nothing in React state
+- T: Add `authProvider` end-to-end from DB through to React state, build a settings UI that adapts per provider, and replace `ddl-auto=update` with proper migration tooling
+- A: Added `authProvider` enum to `User` entity, threaded it through `AuthService` → `AuthResponse` → `AccessTokenResponse` → every `login()` call on the frontend; introduced Flyway with baseline and migration scripts; built settings page with conditional UI per provider; added two new credential endpoints with OAuth-aware validation
+- R: Google users now see a locked panel linking to Google's security settings instead of a broken password form; local users get a working change-password flow with a strength meter; all future schema changes are version-controlled SQL files that apply automatically on restart
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)
