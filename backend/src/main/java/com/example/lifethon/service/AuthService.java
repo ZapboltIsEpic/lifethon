@@ -159,7 +159,7 @@ public class AuthService {
     // ── Private helper ────────────────────────────────────────────────────────
 
     private AuthResponse buildResponse(String message, User user) {
-        String token        = jwtUtil.generateToken(user.getEmail(), user.getId());
+        String token        = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
         return new AuthResponse(
             message, token, refreshToken,
