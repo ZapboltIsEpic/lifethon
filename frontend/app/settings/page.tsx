@@ -172,6 +172,7 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const api = useApi();
   const isOAuth = user?.authProvider !== "LOCAL";
+  console.log(user?.authProvider);
 
   // Password form
   const [currentPw, setCurrentPw] = useState("");

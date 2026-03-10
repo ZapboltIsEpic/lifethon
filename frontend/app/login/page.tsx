@@ -29,6 +29,7 @@ const LoginPage = () => {
           userId: String(data.userId),
           email: data.email,
           role: data.role ?? "USER",
+          authProvider: data.authProvider,
         });
       } else {
         setError(data.error || "Login failed. Please check your credentials.");

@@ -3,101 +3,72 @@
 import { useState } from "react";
 import Link from "next/link";
 import { GoogleLogin } from "@react-oauth/google";
+import { useAuth, API_BASE } from "../contexts/AuthContext";
 
 const RegisterPage = () => {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    // Check if passwords match
+    setError(null);
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
 
     try {
-      const response = await fetch("http://localhost:8081/api/auth/register", {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          firstName,
-          lastName,
-        }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password, firstName, lastName }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Registration successful:", data);
-
-        // Store the token in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.userId);
-        localStorage.setItem("email", data.email);
-
-        // Redirect to dashboard
-        window.location.href = "/dashboard";
+      const data = await res.json();
+      if (res.ok) {
+        login(data.token, {
+          userId: String(data.userId),
+          email: data.email,
+          role: data.role ?? "USER",
+          authProvider: data.authProvider ?? "LOCAL",
+        });
       } else {
-        // Handle error response
-        const errorData = await response.json();
-        console.error(
-          "Registration failed:",
-          errorData.error || response.statusText,
-        );
-        alert(errorData.error || "Registration failed. Please try again.");
+        setError(data.error || "Registration failed. Please try again.");
       }
-    } catch (error) {
-      console.error("Registration error:", error);
-      alert("Network error. Please check if the server is running.");
+    } catch {
+      setError("Network error. Please check if the server is running.");
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError(null);
     try {
-      const response = await fetch("http://localhost:8081/api/auth/google", {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ idToken: credentialResponse.credential }),
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Google login successful:", data);
-
-        // Store the token in localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", String(data.userId));
-        localStorage.setItem("email", data.email);
-
-        // Redirect to dashboard
-        window.location.href = "/dashboard";
+      const data = await res.json();
+      if (res.ok) {
+        login(data.token, {
+          userId: String(data.userId),
+          email: data.email,
+          role: data.role ?? "USER",
+          authProvider: data.authProvider ?? "GOOGLE",
+        });
       } else {
-        const errorData = await response.json();
-        console.error(
-          "Google login failed:",
-          errorData.error || response.statusText,
-        );
-        alert(errorData.error || "Google login failed. Please try again.");
+        setError(data.error || "Google login failed.");
       }
-    } catch (error) {
-      console.error("Google login error:", error);
-      alert(
-        "Network error during Google login. Please check if the server is running.",
-      );
+    } catch {
+      setError("Network error during Google login.");
     }
-  };
-
-  const handleGoogleError = () => {
-    console.error("Google login failed");
-    alert("Google login was cancelled or failed. Please try again.");
   };
 
   return (
@@ -106,6 +77,12 @@ const RegisterPage = () => {
         <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
           Create Account
         </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -120,7 +97,6 @@ const RegisterPage = () => {
               required
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
@@ -145,7 +121,6 @@ const RegisterPage = () => {
               />
             </div>
           </div>
-
           <div>
             <label className="block text-gray-700 font-semibold mb-2">
               Password:
@@ -159,7 +134,6 @@ const RegisterPage = () => {
               minLength={6}
             />
           </div>
-
           <div>
             <label className="block text-gray-700 font-semibold mb-2">
               Confirm Password:
@@ -173,7 +147,6 @@ const RegisterPage = () => {
               minLength={6}
             />
           </div>
-
           <button
             type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
@@ -182,31 +155,27 @@ const RegisterPage = () => {
           </button>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                Or continue with
-              </span>
-            </div>
+        <div className="mt-6 relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">
+              Or continue with
+            </span>
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
-          <div className="mt-6 flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              theme="outline"
-              size="large"
-              text="continue_with"
-              shape="rectangular"
-            />
-          </div>
+        <div className="mt-6 flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError("Google login was cancelled or failed.")}
+            useOneTap
+            theme="outline"
+            size="large"
+            text="continue_with"
+            shape="rectangular"
+          />
         </div>
 
         <div className="mt-8 text-center">
@@ -214,7 +183,7 @@ const RegisterPage = () => {
             Already have an account?{" "}
             <Link
               href="/login"
-              className="text-indigo-600 hover:text-indigo-700 font-semibold transition duration-200"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold"
             >
               Login here
             </Link>
