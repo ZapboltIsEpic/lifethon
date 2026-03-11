@@ -1,0 +1,62 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - banner [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - img [ref=e23]
+        - heading "LIFETHON" [level=6] [ref=e25]
+      - link "Home" [ref=e26] [cursor=pointer]:
+        - /url: /
+        - button "Home" [ref=e27]
+      - link "Login" [ref=e28] [cursor=pointer]:
+        - /url: /login
+        - button "Login" [ref=e29]
+      - link "Sign Up" [ref=e30] [cursor=pointer]:
+        - /url: /register
+        - button "Sign Up" [ref=e31]
+  - generic [ref=e33]:
+    - heading "Create Account" [level=2] [ref=e34]
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]: "Email:"
+        - textbox [ref=e38]
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: "First Name:"
+          - textbox [ref=e42]
+        - generic [ref=e43]:
+          - generic [ref=e44]: "Last Name:"
+          - textbox [ref=e45]
+      - generic [ref=e46]:
+        - generic [ref=e47]: "Password:"
+        - textbox [ref=e48]
+      - generic [ref=e49]:
+        - generic [ref=e50]: "Confirm Password:"
+        - textbox [ref=e51]
+      - button "Create Account" [ref=e52]
+    - generic [ref=e57]: Or continue with
+    - generic [ref=e60]:
+      - button "Continue with Google. Opens in new tab" [ref=e62] [cursor=pointer]:
+        - generic [ref=e64]:
+          - img [ref=e66]
+          - generic [ref=e73]: Continue with Google
+      - iframe
+    - paragraph [ref=e75]:
+      - text: Already have an account?
+      - link "Login here" [ref=e76] [cursor=pointer]:
+        - /url: /login
+  - alert [ref=e77]
+```

@@ -1,0 +1,64 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "1"
+          - generic [ref=e15]: "2"
+        - generic [ref=e16]:
+          - text: Issue
+          - generic [ref=e17]: s
+      - button "Collapse issues badge" [ref=e18]:
+        - img [ref=e19]
+  - banner [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - img [ref=e24]
+        - heading "LIFETHON" [level=6] [ref=e26]
+      - link "Home" [ref=e27] [cursor=pointer]:
+        - /url: /
+        - button "Home" [ref=e28]
+      - link "Login" [ref=e29] [cursor=pointer]:
+        - /url: /login
+        - button "Login" [ref=e30]
+      - link "Sign Up" [ref=e31] [cursor=pointer]:
+        - /url: /register
+        - button "Sign Up" [ref=e32]
+  - generic [ref=e34]:
+    - heading "Create Account" [level=2] [ref=e35]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]: "Email:"
+        - textbox [ref=e39]
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: "First Name:"
+          - textbox [ref=e43]
+        - generic [ref=e44]:
+          - generic [ref=e45]: "Last Name:"
+          - textbox [ref=e46]
+      - generic [ref=e47]:
+        - generic [ref=e48]: "Password:"
+        - textbox [ref=e49]
+      - generic [ref=e50]:
+        - generic [ref=e51]: "Confirm Password:"
+        - textbox [ref=e52]
+      - button "Create Account" [ref=e53]
+    - generic [ref=e58]: Or continue with
+    - generic [ref=e61]:
+      - button "Continue with Google. Opens in new tab" [ref=e63] [cursor=pointer]:
+        - generic [ref=e65]:
+          - img [ref=e67]
+          - generic [ref=e74]: Continue with Google
+      - iframe
+    - paragraph [ref=e76]:
+      - text: Already have an account?
+      - link "Login here" [ref=e77] [cursor=pointer]:
+        - /url: /login
+  - alert [ref=e78]
+```
