@@ -1088,6 +1088,50 @@ R: Task system live end-to-end; reward crediting pending CoinService integration
 - A: Added `authProvider` enum to `User` entity, threaded it through `AuthService` → `AuthResponse` → `AccessTokenResponse` → every `login()` call on the frontend; introduced Flyway with baseline and migration scripts; built settings page with conditional UI per provider; added two new credential endpoints with OAuth-aware validation
 - R: Google users now see a locked panel linking to Google's security settings instead of a broken password form; local users get a working change-password flow with a strength meter; all future schema changes are version-controlled SQL files that apply automatically on restart
 
+---
+
+## Entry — 2026-03-12 | Area: backend/testing
+
+- **Title:** Full test suite setup for Spring Boot 4 backend
+- **Files / Paths:** `backend/src/test/java/com/example/lifethon/service/AuthServiceTest.java`, `backend/src/test/java/com/example/lifethon/service/UserServiceTest.java`, `backend/src/test/java/com/example/lifethon/AuthIntegrationTest.java`, `backend/pom.xml`
+- **Stage:** Fixed
+- **Tags:** #testing #springboot #backend #integration #debugging
+
+### Problem / Observation 🚧
+
+- Setting up a backend test suite for a Spring Boot 4 project revealed several breaking changes from Boot 3 that aren't well documented together in one place
+- `spring-boot-starter-data-jpa-test` and `spring-boot-starter-webmvc-test` don't exist — caused immediate build failure
+- `@MockBean` / `org.springframework.boot.test.mock.mockito` was removed in Boot 4, replaced by `@MockitoBean` from a different package
+- `@WebMvcTest` slice tests for `spring-boot-starter-webmvc` (not `spring-boot-starter-web`) failed to resolve even after fixing the starter — `org.springframework.boot.test.autoconfigure.web.servlet` not found
+- `TestRestTemplate` removed from `spring-boot-starter-test` in Boot 4
+- `org.testcontainers:junit-jupiter` and `org.testcontainers:postgresql` not managed by the Spring Boot 4 BOM — missing explicit version caused build failure
+- `JwtUtil.generateToken` takes three args `(String, Long, User.Role)` but test stub only passed two — compiler error
+
+### Action / Fix ✅
+
+- Replaced nonexistent test starters with `spring-boot-starter-test` (single dependency covers JUnit 5, Mockito, AssertJ, MockHttpServletResponse)
+- Added `<testcontainers.version>1.20.4</testcontainers.version>` property and explicit versions on both TC artifacts
+- Added `spring-boot-starter-webflux` (test scope) to get `WebTestClient` as the replacement for `TestRestTemplate`
+- Scrapped `@WebMvcTest` controller tests entirely — decided the coverage was redundant given service unit tests already cover logic; folded all HTTP-layer assertions into `AuthIntegrationTest` using `WebTestClient` against a real server + Testcontainers Postgres
+- `AuthIntegrationTest` restructured into `@Nested` groups per endpoint (37 tests total), each test self-contained with unique UUID email — no `@Order` chaining, no shared state
+- Fixed `generateToken` stub: `anyLong()` → `anyLong(), any(User.Role.class)`
+- Added `spring-boot-starter-webflux` test dep for `WebTestClient`
+
+### Learnings ✨
+
+- Spring Boot 4 removed several things that Boot 3 tutorials still reference — worth checking the [Boot 4 migration guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide) before starting any test setup
+- `@WebMvcTest` is not worth the classpath complexity when `spring-boot-starter-webmvc` is used instead of `spring-boot-starter-web` — integration tests with a real server give more confidence for the same effort
+- `MockHttpServletResponse.getCookies()` only sees cookies added via `addCookie()` — cookies written via `response.addHeader("Set-Cookie", ...)` (which `ResponseCookie` uses) are invisible to it; assert on `getHeader("Set-Cookie")` instead
+- `@RequiredArgsConstructor` (Lombok) + `@InjectMocks` can be fragile depending on Lombok/Mockito version alignment — explicit `new Controller(mock, mock, mock)` in `@BeforeEach` is safer and more readable
+- Testcontainers spins up a real Postgres per test class (not per test) so it's fast; the `@Container static` + `@DynamicPropertySource` pattern is the correct Boot 4 way to wire it
+
+### STAR-ready bullets ⭐
+
+- **S:** Spring Boot 4 backend had no test coverage and several Boot 4 breaking changes blocked compilation from the start
+- **T:** Establish a working three-layer test suite (unit → HTTP integration → E2E) that compiles and passes with no workarounds
+- **A:** Diagnosed each compiler error against the Boot 4 migration guide and source code, replaced `@WebMvcTest` controller tests with a single expanded `AuthIntegrationTest` using Testcontainers + `WebTestClient`, pinned Testcontainers versions, fixed `@MockBean` → `@MockitoBean`, and corrected cookie and JWT stub assertions by reading the actual source
+- **R:** 37 integration tests + 30 unit tests covering auth, CRUD, credential changes, Google OAuth flow, and error paths — all passing; CI-ready with Docker; unit tests runnable offline in under 5 seconds
+
 # Template — New entries
 
 ## Entry — YYYY-MM-DD | Area: (frontend/backend/infra/etc.)

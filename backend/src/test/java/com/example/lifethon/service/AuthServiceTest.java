@@ -53,7 +53,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void stubJwt() {
-        lenient().when(jwtUtil.generateToken(anyString(), anyLong())).thenReturn("access-token");
+        lenient().when(jwtUtil.generateToken(anyString(), anyLong(), any(User.Role.class))).thenReturn("access-token");
         lenient().when(jwtUtil.generateRefreshToken(anyString())).thenReturn("refresh-token");
     }
 
