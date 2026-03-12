@@ -1,10 +1,10 @@
 import { http, HttpResponse } from "msw";
 
-const API = "http://localhost:8081";
+export const API = "http://localhost:8081";
 
-// ── Reusable response shapes ───────────────────────────────────────────────
+// ── Shared response shape ─────────────────────────────────────────────────────
 
-const authSuccess = (overrides = {}) => ({
+export const makeAuthBody = (overrides: Record<string, unknown> = {}) => ({
   token: "mock-access-token",
   refreshToken: "mock-refresh-token",
   userId: 1,
@@ -15,63 +15,38 @@ const authSuccess = (overrides = {}) => ({
   ...overrides,
 });
 
-// ── Default handlers (happy path) ─────────────────────────────────────────
+// ── Default handlers (happy path for every test unless overridden) ────────────
 
 export const handlers = [
-  // Auth
-  http.post(`${API}/api/auth/login`, () => HttpResponse.json(authSuccess())),
-
+  http.post(`${API}/api/auth/login`, () => HttpResponse.json(makeAuthBody())),
   http.post(`${API}/api/auth/register`, () =>
-    HttpResponse.json(authSuccess({ message: "Registration successful" }), {
+    HttpResponse.json(makeAuthBody({ message: "Registration successful" }), {
       status: 201,
     }),
   ),
-
   http.post(`${API}/api/auth/refresh`, () =>
-    HttpResponse.json(authSuccess({ message: "Token refreshed successfully" })),
+    HttpResponse.json(makeAuthBody({ message: "Token refreshed" })),
   ),
-
   http.post(`${API}/api/auth/logout`, () =>
     HttpResponse.json({ message: "Logged out successfully" }),
   ),
-
   http.post(`${API}/api/auth/google`, () =>
-    HttpResponse.json(
-      authSuccess({
-        authProvider: "GOOGLE",
-        message: "Google login successful",
-      }),
-    ),
+    HttpResponse.json(makeAuthBody({ authProvider: "GOOGLE" })),
   ),
 
-  // User credentials
   http.post(`${API}/api/users/change-password`, () =>
     HttpResponse.json({ message: "Password updated successfully" }),
   ),
-
   http.post(`${API}/api/users/change-email`, () =>
     HttpResponse.json({ message: "Email updated. Please log in again." }),
   ),
-
-  // Users CRUD
-  http.get(`${API}/api/users`, () =>
-    HttpResponse.json([
-      {
-        id: 1,
-        email: "user@example.com",
-        firstName: "Alice",
-        lastName: "Smith",
-      },
-    ]),
-  ),
-
   http.delete(
     `${API}/api/users/:id`,
     () => new HttpResponse(null, { status: 204 }),
   ),
 ];
 
-// ── Override factories (use these in individual tests via server.use()) ────
+// ── Override factories — use inside tests with server.use(overrides.X()) ──────
 
 export const overrides = {
   loginFail: () =>
@@ -92,7 +67,7 @@ export const overrides = {
       HttpResponse.json({ error: "No refresh token" }, { status: 401 }),
     ),
 
-  changePasswordFail: () =>
+  changePasswordWrongCurrent: () =>
     http.post(`${API}/api/users/change-password`, () =>
       HttpResponse.json(
         { error: "Current password is incorrect" },
@@ -113,8 +88,14 @@ export const overrides = {
       HttpResponse.json({ error: "Email is already in use" }, { status: 400 }),
     ),
 
-  googleAuth: (provider = "GOOGLE") =>
-    http.post(`${API}/api/auth/google`, () =>
-      HttpResponse.json(authSuccess({ authProvider: provider })),
+  googleUser: () =>
+    http.post(`${API}/api/auth/refresh`, () =>
+      HttpResponse.json(
+        makeAuthBody({
+          authProvider: "GOOGLE",
+          email: "google@example.com",
+          userId: 2,
+        }),
+      ),
     ),
 };
