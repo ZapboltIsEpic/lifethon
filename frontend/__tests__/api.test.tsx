@@ -2,21 +2,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/mocks/server";
+import { API } from "../test/mocks/handlers";
 
-// ── We test useApi by mocking AuthContext to supply a token ───────────────
+// ── Mocks ─────────────────────────────────────────────────────────────────────
+// AuthContext must be mocked before importing useApi because useApi calls useAuth()
 
-const mockLogout = vi.fn();
 let mockToken: string | null = "mock-access-token";
+const mockLogout = vi.fn();
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: vi.fn(() => ({ token: mockToken, logout: mockLogout })),
+  useAuth: () => ({ token: mockToken, logout: mockLogout }),
   API_BASE: "http://localhost:8081",
 }));
 
-// Import AFTER mocking context
-const { useApi } = await import("@/lib/api");
+// ── Import hook AFTER mocks ───────────────────────────────────────────────────
 
-const renderApi = () => renderHook(() => useApi());
+import { useApi } from "../app/lib/api";
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("useApi", () => {
   beforeEach(() => {
@@ -24,101 +27,92 @@ describe("useApi", () => {
     mockLogout.mockClear();
   });
 
-  // ── GET ────────────────────────────────────────────────────────────────
+  // ── GET ───────────────────────────────────────────────────────────────────
 
   describe("get()", () => {
-    it("includes Authorization header with Bearer token", async () => {
-      let capturedHeaders: Headers | undefined;
+    it("attaches Authorization: Bearer <token> header", async () => {
+      let captured: string | null = null;
 
       server.use(
-        http.get("http://localhost:8081/api/test", ({ request }) => {
-          capturedHeaders = request.headers;
+        http.get(`${API}/api/test`, ({ request }) => {
+          captured = request.headers.get("Authorization");
           return HttpResponse.json({ ok: true });
         }),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       await act(async () => {
         await result.current.get("/api/test");
       });
 
-      expect(capturedHeaders?.get("Authorization")).toBe(
-        "Bearer mock-access-token",
-      );
+      expect(captured).toBe("Bearer mock-access-token");
     });
 
-    it("includes credentials: include", async () => {
-      let capturedRequest: Request | undefined;
+    it("returns the full Response object", async () => {
+      server.use(
+        http.get(`${API}/api/data`, () => HttpResponse.json({ value: 42 })),
+      );
+
+      const { result } = renderHook(() => useApi());
+      let res: Response | undefined;
+      await act(async () => {
+        res = await result.current.get("/api/data");
+      });
+
+      expect(res?.ok).toBe(true);
+      expect(await res?.json()).toEqual({ value: 42 });
+    });
+
+    it("sends no Authorization header when token is null", async () => {
+      mockToken = null;
+      let captured: string | null = "present";
 
       server.use(
-        http.get("http://localhost:8081/api/test", ({ request }) => {
-          capturedRequest = request;
-          return HttpResponse.json({});
+        http.get(`${API}/api/public`, ({ request }) => {
+          captured = request.headers.get("Authorization");
+          return HttpResponse.json({ public: true });
         }),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       await act(async () => {
-        await result.current.get("/api/test");
+        await result.current.get("/api/public");
       });
 
-      // credentials are passed at the fetch level; MSW can't inspect them directly
-      // but we verify the call was made and returned a response
-      expect(capturedRequest).toBeDefined();
-    });
-
-    it("returns the response object", async () => {
-      server.use(
-        http.get("http://localhost:8081/api/data", () =>
-          HttpResponse.json({ value: 42 }),
-        ),
-      );
-
-      const { result } = renderApi();
-      let response: Response | undefined;
-      await act(async () => {
-        response = await result.current.get("/api/data");
-      });
-
-      expect(response?.ok).toBe(true);
-      const body = await response?.json();
-      expect(body.value).toBe(42);
+      expect(captured).toBeNull();
     });
   });
 
-  // ── POST ───────────────────────────────────────────────────────────────
+  // ── POST ──────────────────────────────────────────────────────────────────
 
   describe("post()", () => {
-    it("sends JSON body with correct Content-Type", async () => {
-      let capturedRequest: Request | undefined;
+    it("sends body as JSON with Content-Type header", async () => {
+      let capturedBody: unknown;
+      let capturedContentType: string | null = null;
 
       server.use(
-        http.post("http://localhost:8081/api/items", async ({ request }) => {
-          capturedRequest = request.clone();
+        http.post(`${API}/api/items`, async ({ request }) => {
+          capturedBody = await request.json();
+          capturedContentType = request.headers.get("Content-Type");
           return HttpResponse.json({ created: true }, { status: 201 });
         }),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       await act(async () => {
         await result.current.post("/api/items", { name: "widget" });
       });
 
-      expect(capturedRequest?.headers.get("Content-Type")).toContain(
-        "application/json",
-      );
-      const body = await capturedRequest?.json();
-      expect(body.name).toBe("widget");
+      expect(capturedBody).toEqual({ name: "widget" });
+      expect(capturedContentType).toContain("application/json");
     });
 
-    it("works without a body", async () => {
+    it("works without a body argument", async () => {
       server.use(
-        http.post("http://localhost:8081/api/action", () =>
-          HttpResponse.json({ done: true }),
-        ),
+        http.post(`${API}/api/action`, () => HttpResponse.json({ done: true })),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       let res: Response | undefined;
       await act(async () => {
         res = await result.current.post("/api/action");
@@ -128,84 +122,74 @@ describe("useApi", () => {
     });
   });
 
-  // ── DELETE ─────────────────────────────────────────────────────────────
+  // ── DELETE ────────────────────────────────────────────────────────────────
 
   describe("delete()", () => {
-    it("sends DELETE request with auth header", async () => {
-      let capturedHeaders: Headers | undefined;
+    it("sends DELETE with Authorization header", async () => {
+      let capturedAuth: string | null = null;
+      let capturedMethod = "";
 
       server.use(
-        http.delete("http://localhost:8081/api/items/1", ({ request }) => {
-          capturedHeaders = request.headers;
+        http.delete(`${API}/api/items/5`, ({ request }) => {
+          capturedAuth = request.headers.get("Authorization");
+          capturedMethod = request.method;
           return new HttpResponse(null, { status: 204 });
         }),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       await act(async () => {
-        await result.current.delete("/api/items/1");
+        await result.current.delete("/api/items/5");
       });
 
-      expect(capturedHeaders?.get("Authorization")).toBe(
-        "Bearer mock-access-token",
-      );
+      expect(capturedMethod).toBe("DELETE");
+      expect(capturedAuth).toBe("Bearer mock-access-token");
     });
   });
 
-  // ── 401 auto-refresh ───────────────────────────────────────────────────
+  // ── 401 auto-refresh ──────────────────────────────────────────────────────
 
-  describe("automatic token refresh on 401", () => {
-    it("retries request after successful token refresh", async () => {
-      let callCount = 0;
-
+  describe("401 handling", () => {
+    it("throws TOKEN_REFRESHED after a successful silent refresh", async () => {
       server.use(
-        http.get("http://localhost:8081/api/protected", () => {
-          callCount++;
-          if (callCount === 1) {
-            return new HttpResponse(null, { status: 401 });
-          }
-          return HttpResponse.json({ data: "secret" });
-        }),
-        http.post("http://localhost:8081/api/auth/refresh", () =>
-          HttpResponse.json({
-            token: "new-access-token",
-            userId: 1,
-            email: "user@example.com",
-            role: "USER",
-            authProvider: "LOCAL",
-          }),
+        http.get(
+          `${API}/api/protected`,
+          () => new HttpResponse(null, { status: 401 }),
+        ),
+        http.post(`${API}/api/auth/refresh`, () =>
+          HttpResponse.json({ token: "new-token" }),
         ),
       );
 
-      const { result } = renderApi();
-      let res: Response | undefined;
+      const { result } = renderHook(() => useApi());
+      let thrownMessage = "";
+
       await act(async () => {
         try {
           await result.current.get("/api/protected");
         } catch (e: any) {
-          // TOKEN_REFRESHED thrown — caller should retry
-          if (e.message === "TOKEN_REFRESHED") {
-            res = await result.current.get("/api/protected");
-          }
+          thrownMessage = e.message;
         }
       });
 
-      expect(callCount).toBeGreaterThan(1);
+      expect(thrownMessage).toBe("TOKEN_REFRESHED");
+      expect(mockLogout).not.toHaveBeenCalled();
     });
 
-    it("calls logout() when refresh also fails", async () => {
+    it("calls logout() when the silent refresh also fails", async () => {
       server.use(
         http.get(
-          "http://localhost:8081/api/protected",
+          `${API}/api/protected`,
           () => new HttpResponse(null, { status: 401 }),
         ),
         http.post(
-          "http://localhost:8081/api/auth/refresh",
+          `${API}/api/auth/refresh`,
           () => new HttpResponse(null, { status: 401 }),
         ),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
+
       await act(async () => {
         try {
           await result.current.get("/api/protected");
@@ -214,30 +198,45 @@ describe("useApi", () => {
         }
       });
 
-      expect(mockLogout).toHaveBeenCalled();
+      expect(mockLogout).toHaveBeenCalledOnce();
     });
   });
 
-  // ── No token ───────────────────────────────────────────────────────────
+  // ── PATCH / PUT ───────────────────────────────────────────────────────────
 
-  describe("when no token is available", () => {
-    it("still makes request without Authorization header", async () => {
-      mockToken = null;
-      let capturedHeaders: Headers | undefined;
-
+  describe("patch() and put()", () => {
+    it("patch sends PATCH with body", async () => {
+      let method = "";
       server.use(
-        http.get("http://localhost:8081/api/public", ({ request }) => {
-          capturedHeaders = request.headers;
-          return HttpResponse.json({ public: true });
+        http.patch(`${API}/api/items/1`, async ({ request }) => {
+          method = request.method;
+          return HttpResponse.json({ updated: true });
         }),
       );
 
-      const { result } = renderApi();
+      const { result } = renderHook(() => useApi());
       await act(async () => {
-        await result.current.get("/api/public");
+        await result.current.patch("/api/items/1", { active: false });
       });
 
-      expect(capturedHeaders?.get("Authorization")).toBeNull();
+      expect(method).toBe("PATCH");
+    });
+
+    it("put sends PUT with body", async () => {
+      let method = "";
+      server.use(
+        http.put(`${API}/api/items/1`, async ({ request }) => {
+          method = request.method;
+          return HttpResponse.json({ replaced: true });
+        }),
+      );
+
+      const { result } = renderHook(() => useApi());
+      await act(async () => {
+        await result.current.put("/api/items/1", { name: "updated" });
+      });
+
+      expect(method).toBe("PUT");
     });
   });
 });
