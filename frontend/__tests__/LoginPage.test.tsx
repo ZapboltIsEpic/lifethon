@@ -1,173 +1,415 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LoginPage from "@/app/login/page";
-import RegisterPage from "@/app/register/page";
 import { server } from "../test/mocks/server";
 import { overrides } from "../test/mocks/handlers";
 
-// ── Mocks ─────────────────────────────────────────────────────────────────
+// ── Mock AuthContext ──────────────────────────────────────────────────────────
+// We use a factory so vi.fn() references are stable and can be configured
+// per-test via mockReturnValue.
 
-const mockLogin = vi.fn();
+const mockLogout = vi.fn();
+const mockUseAuth = vi.fn();
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: vi.fn(() => ({
-    login: mockLogin,
-    isAuthenticated: false,
-    API_BASE: "http://localhost:8081",
-  })),
-  API_BASE: "http://localhost:8081",
+  useAuth: () => mockUseAuth(),
 }));
 
-// ── Login page ─────────────────────────────────────────────────────────────
+// ── Mock useApi ───────────────────────────────────────────────────────────────
+// Each method is a vi.fn() that returns a resolved Response by default.
+// Individual tests override .mockResolvedValueOnce() as needed.
 
-describe("LoginPage", () => {
-  beforeEach(() => mockLogin.mockClear());
+const apiGet = vi.fn();
+const apiPost = vi.fn();
+const apiDelete = vi.fn();
 
-  it("renders email and password fields", () => {
-    render(<LoginPage />);
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /sign in|log in/i }),
-    ).toBeInTheDocument();
-  });
+vi.mock("@/lib/api", () => ({
+  useApi: () => ({
+    get: apiGet,
+    post: apiPost,
+    delete: apiDelete,
+  }),
+}));
 
-  it("calls login() with token and user data on success", async () => {
-    const user = userEvent.setup();
-    render(<LoginPage />);
+// ── Helper: build a fake Response ────────────────────────────────────────────
 
-    await user.type(screen.getByLabelText(/email/i), "user@example.com");
-    await user.type(screen.getByLabelText(/password/i), "password123");
-    await user.click(screen.getByRole("button", { name: /sign in|log in/i }));
+const okResponse = (body: unknown) =>
+  ({ ok: true, status: 200, json: async () => body }) as Response;
+const errorResponse = (body: unknown, status = 400) =>
+  ({ ok: false, status, json: async () => body }) as Response;
 
-    await waitFor(() =>
-      expect(mockLogin).toHaveBeenCalledWith(
-        "mock-access-token",
-        expect.objectContaining({
-          email: "user@example.com",
-          authProvider: "LOCAL",
-        }),
-      ),
-    );
-  });
+// ── Import component AFTER mocks ─────────────────────────────────────────────
 
-  it("shows inline error for invalid credentials", async () => {
-    server.use(overrides.loginFail());
-    const user = userEvent.setup();
-    render(<LoginPage />);
+import SettingsPage from "@/app/settings/page";
 
-    await user.type(screen.getByLabelText(/email/i), "user@example.com");
-    await user.type(screen.getByLabelText(/password/i), "wrongpass");
-    await user.click(screen.getByRole("button", { name: /sign in|log in/i }));
+// ── Default user helpers ──────────────────────────────────────────────────────
 
-    await waitFor(() =>
-      expect(
-        screen.getByText(/Invalid email or password/i),
-      ).toBeInTheDocument(),
-    );
-
-    // Must NOT use alert()
-    expect(window.alert).not.toHaveBeenCalled?.();
-  });
-
-  it("disables submit button while request is in flight", async () => {
-    const user = userEvent.setup();
-    render(<LoginPage />);
-
-    await user.type(screen.getByLabelText(/email/i), "user@example.com");
-    await user.type(screen.getByLabelText(/password/i), "password123");
-
-    const btn = screen.getByRole("button", { name: /sign in|log in/i });
-    await user.click(btn);
-
-    // Button should briefly be disabled / show loading text
-    // (resolves async so we just verify login was eventually called)
-    await waitFor(() => expect(mockLogin).toHaveBeenCalled());
-  });
-
-  it("requires both email and password to enable submit", async () => {
-    const user = userEvent.setup();
-    render(<LoginPage />);
-
-    // Only fill email — button should stay disabled or fail validation
-    await user.type(screen.getByLabelText(/email/i), "user@example.com");
-
-    // Try submitting without a password — login should not be called
-    const btn = screen.getByRole("button", { name: /sign in|log in/i });
-    if (!btn.hasAttribute("disabled")) {
-      await user.click(btn);
-    }
-    expect(mockLogin).not.toHaveBeenCalled();
-  });
-
-  it("has link to register page", () => {
-    render(<LoginPage />);
-    expect(
-      screen.getByRole("link", { name: /sign up|register|create/i }),
-    ).toHaveAttribute("href", expect.stringContaining("register"));
-  });
+const localUser = () => ({
+  userId: "1",
+  email: "user@example.com",
+  role: "USER",
+  authProvider: "LOCAL" as const,
 });
 
-// ── Register page ──────────────────────────────────────────────────────────
+const googleUser = () => ({
+  userId: "2",
+  email: "google@example.com",
+  role: "USER",
+  authProvider: "GOOGLE" as const,
+});
 
-describe("RegisterPage", () => {
-  beforeEach(() => mockLogin.mockClear());
+const setupLocalUser = () =>
+  mockUseAuth.mockReturnValue({ user: localUser(), logout: mockLogout });
 
-  it("renders all registration fields", () => {
-    render(<RegisterPage />);
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /register|sign up|create/i }),
-    ).toBeInTheDocument();
+const setupGoogleUser = () =>
+  mockUseAuth.mockReturnValue({ user: googleUser(), logout: mockLogout });
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("SettingsPage", () => {
+  beforeEach(() => {
+    setupLocalUser();
+    mockLogout.mockClear();
+    apiPost.mockClear();
+    apiDelete.mockClear();
+    // Default: every post/delete succeeds
+    apiPost.mockResolvedValue(okResponse({ message: "Success" }));
+    apiDelete.mockResolvedValue(okResponse(null));
   });
 
-  it("calls login() after successful registration", async () => {
-    const user = userEvent.setup();
-    render(<RegisterPage />);
+  // ── Account header ─────────────────────────────────────────────────────────
 
-    await user.type(screen.getByLabelText(/email/i), "new@example.com");
-    await user.type(screen.getByLabelText(/password/i), "password123");
+  describe("account header", () => {
+    it("shows current email", () => {
+      render(<SettingsPage />);
+      expect(screen.getByText("user@example.com")).toBeInTheDocument();
+    });
 
-    const firstName = screen.queryByLabelText(/first name/i);
-    if (firstName) await user.type(firstName, "Alice");
+    it("shows LOCAL badge for local account", () => {
+      render(<SettingsPage />);
+      expect(screen.getByText(/local account/i)).toBeInTheDocument();
+    });
 
-    const lastName = screen.queryByLabelText(/last name/i);
-    if (lastName) await user.type(lastName, "Smith");
-
-    await user.click(
-      screen.getByRole("button", { name: /register|sign up|create/i }),
-    );
-
-    await waitFor(() =>
-      expect(mockLogin).toHaveBeenCalledWith(
-        "mock-access-token",
-        expect.objectContaining({ authProvider: "LOCAL" }),
-      ),
-    );
+    it("shows Google badge for Google account", () => {
+      setupGoogleUser();
+      render(<SettingsPage />);
+      expect(screen.getByText(/google account/i)).toBeInTheDocument();
+    });
   });
 
-  it("shows error when email is already registered", async () => {
-    server.use(overrides.registerEmailTaken());
-    const user = userEvent.setup();
-    render(<RegisterPage />);
+  // ── Change Password — LOCAL ────────────────────────────────────────────────
 
-    await user.type(screen.getByLabelText(/email/i), "taken@example.com");
-    await user.type(screen.getByLabelText(/password/i), "password123");
-    await user.click(
-      screen.getByRole("button", { name: /register|sign up|create/i }),
-    );
+  describe("Change Password (LOCAL user)", () => {
+    it("renders all three password fields", () => {
+      render(<SettingsPage />);
+      expect(
+        screen.getByPlaceholderText(/Enter current password/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Enter new password/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+      ).toBeInTheDocument();
+    });
 
-    await waitFor(() =>
-      expect(screen.getByText(/already exists/i)).toBeInTheDocument(),
-    );
+    it("shows strength bar while typing new password", async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "abc",
+      );
+      expect(screen.getByText(/Very Weak|Weak/i)).toBeInTheDocument();
+
+      await user.clear(screen.getByPlaceholderText(/Enter new password/i));
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "Secure1!",
+      );
+      expect(screen.getByText(/Strong/i)).toBeInTheDocument();
+    });
+
+    it("shows mismatch error when confirm differs from new password", async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "NewPass1!",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+        "Different!",
+      );
+      expect(screen.getByText(/don't match/i)).toBeInTheDocument();
+    });
+
+    it("shows match confirmation when both passwords agree", async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "NewPass1!",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+        "NewPass1!",
+      );
+      expect(screen.getByText(/passwords match/i)).toBeInTheDocument();
+    });
+
+    it("submit button disabled until all fields are filled", () => {
+      render(<SettingsPage />);
+      expect(
+        screen.getByRole("button", { name: /Update Password/i }),
+      ).toBeDisabled();
+    });
+
+    it("shows success toast on successful password change", async () => {
+      apiPost.mockResolvedValueOnce(
+        okResponse({ message: "Password updated successfully" }),
+      );
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter current password/i),
+        "oldpass",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "NewPass1!",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+        "NewPass1!",
+      );
+      await user.click(
+        screen.getByRole("button", { name: /Update Password/i }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/Password updated successfully/i),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    it("shows error toast when current password is wrong", async () => {
+      apiPost.mockResolvedValueOnce(
+        errorResponse({ error: "Current password is incorrect" }, 401),
+      );
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter current password/i),
+        "wrong",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "NewPass1!",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+        "NewPass1!",
+      );
+      await user.click(
+        screen.getByRole("button", { name: /Update Password/i }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/Current password is incorrect/i),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    it("shows error when passwords differ on submit", async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter current password/i),
+        "old",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Enter new password/i),
+        "NewPass1!",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Re-enter new password/i),
+        "NoMatch!!",
+      );
+      await user.click(
+        screen.getByRole("button", { name: /Update Password/i }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByText(/don't match/i)).toBeInTheDocument(),
+      );
+      expect(apiPost).not.toHaveBeenCalled();
+    });
   });
 
-  it("has link back to login page", () => {
-    render(<RegisterPage />);
-    expect(
-      screen.getByRole("link", { name: /log in|sign in|already/i }),
-    ).toHaveAttribute("href", expect.stringContaining("login"));
+  // ── Change Password — GOOGLE ───────────────────────────────────────────────
+
+  describe("Change Password (GOOGLE user)", () => {
+    beforeEach(() => setupGoogleUser());
+
+    it("shows locked OAuth panel instead of password form", () => {
+      render(<SettingsPage />);
+      expect(
+        screen.queryByPlaceholderText(/Enter current password/i),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(/signed in with Google/i)).toBeInTheDocument();
+    });
+
+    it("links to Google Account security settings", () => {
+      render(<SettingsPage />);
+      const link = screen.getByRole("link", {
+        name: /Google Account security settings/i,
+      });
+      expect(link).toHaveAttribute(
+        "href",
+        "https://myaccount.google.com/security",
+      );
+      expect(link).toHaveAttribute("target", "_blank");
+    });
+  });
+
+  // ── Change Email ───────────────────────────────────────────────────────────
+
+  describe("Change Email", () => {
+    it("current email is shown as read-only", () => {
+      render(<SettingsPage />);
+      const input = screen.getByDisplayValue("user@example.com");
+      expect(input).toHaveAttribute("readonly");
+    });
+
+    it("shows password field for LOCAL user", () => {
+      render(<SettingsPage />);
+      expect(
+        screen.getByPlaceholderText(/Enter your current password to confirm/i),
+      ).toBeInTheDocument();
+    });
+
+    it("hides password field for GOOGLE user", () => {
+      setupGoogleUser();
+      render(<SettingsPage />);
+      expect(
+        screen.queryByPlaceholderText(
+          /Enter your current password to confirm/i,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows success toast and calls logout after email change", async () => {
+      apiPost.mockResolvedValueOnce(
+        okResponse({ message: "Email updated. Please log in again." }),
+      );
+      vi.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter new email/i),
+        "new@example.com",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Enter your current password to confirm/i),
+        "password123",
+      );
+      await user.click(screen.getByRole("button", { name: /Update Email/i }));
+
+      await waitFor(() =>
+        expect(screen.getByText(/Email updated/i)).toBeInTheDocument(),
+      );
+
+      vi.advanceTimersByTime(2000);
+      await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+      vi.useRealTimers();
+    });
+
+    it("shows error when new email is already taken", async () => {
+      apiPost.mockResolvedValueOnce(
+        errorResponse({ error: "Email is already in use" }, 400),
+      );
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(
+        screen.getByPlaceholderText(/Enter new email/i),
+        "taken@example.com",
+      );
+      await user.type(
+        screen.getByPlaceholderText(/Enter your current password to confirm/i),
+        "pass123",
+      );
+      await user.click(screen.getByRole("button", { name: /Update Email/i }));
+
+      await waitFor(() =>
+        expect(screen.getByText(/already in use/i)).toBeInTheDocument(),
+      );
+    });
+
+    it("Update Email button is disabled until required fields filled", () => {
+      render(<SettingsPage />);
+      expect(
+        screen.getByRole("button", { name: /Update Email/i }),
+      ).toBeDisabled();
+    });
+  });
+
+  // ── Danger Zone ────────────────────────────────────────────────────────────
+
+  describe("Danger Zone", () => {
+    it("delete button is disabled until DELETE typed exactly", async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      const btn = screen.getByRole("button", { name: /Delete My Account/i });
+      expect(btn).toBeDisabled();
+
+      await user.type(screen.getByPlaceholderText("DELETE"), "delete"); // lowercase
+      expect(btn).toBeDisabled();
+
+      await user.clear(screen.getByPlaceholderText("DELETE"));
+      await user.type(screen.getByPlaceholderText("DELETE"), "DELETE"); // exact
+      expect(btn).not.toBeDisabled();
+    });
+
+    it("calls logout after successful account deletion", async () => {
+      apiDelete.mockResolvedValueOnce({ ok: true, status: 204 } as Response);
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(screen.getByPlaceholderText("DELETE"), "DELETE");
+      await user.click(
+        screen.getByRole("button", { name: /Delete My Account/i }),
+      );
+
+      await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+    });
+
+    it("shows error toast if delete fails", async () => {
+      apiDelete.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      await user.type(screen.getByPlaceholderText("DELETE"), "DELETE");
+      await user.click(
+        screen.getByRole("button", { name: /Delete My Account/i }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/Failed to delete account/i),
+        ).toBeInTheDocument(),
+      );
+    });
   });
 });
